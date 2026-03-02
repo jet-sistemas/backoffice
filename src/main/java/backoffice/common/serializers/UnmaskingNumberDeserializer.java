@@ -1,10 +1,10 @@
-package project.common.serializers;
+package backoffice.common.serializers;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 
-import project.common.utils.MaskUtils;
+import backoffice.common.utils.MaskUtils;
 
 import java.io.IOException;
 

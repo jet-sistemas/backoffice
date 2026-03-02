@@ -1,10 +1,10 @@
-package project.common.serializers;
+package backoffice.common.serializers;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import project.common.annotations.Mask;
-import project.common.annotations.enums.MaskType;
+import backoffice.common.annotations.Mask;
+import backoffice.common.annotations.enums.MaskType;
 
 import java.io.IOException;
 
