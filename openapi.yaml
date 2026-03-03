@@ -1,0 +1,1182 @@
+openapi: 3.0.3
+info:
+  title: Jet Backoffice API
+  version: 1.0.0
+  description: |
+    API do backoffice da Associação Desportiva Artística e Cultural Joyce e Teatino (Jet).
+    Documento inicial gerado a partir das regras funcionais em `.cursor/rules`.
+servers:
+  - url: https://api.jet.local/api/v1
+    description: Ambiente padrão (ajustar conforme deployment)
+
+tags:
+  - name: Auth
+    description: Autenticação e recuperação de senha
+  - name: Admin
+    description: Funcionalidades gerais de administração (ADM)
+  - name: Users
+    description: Gestão de usuários raiz (users)
+  - name: Sponsors
+    description: Gestão de patrocinadores
+  - name: Members
+    description: Gestão de membros
+  - name: Benefits
+    description: Gestão de benefícios
+  - name: Checkins
+    description: Check-ins entre patrocinadores e membros
+  - name: Me
+    description: Áreas logadas (membro e patrocinador)
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login de usuário
+      description: Autentica um usuário e retorna token de acesso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Autenticado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenciais inválidas ou conta inativa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Solicita redefinição de senha
+      description: Envia um link de redefinição de senha para o e-mail informado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '204':
+          description: Se existir usuário, o e-mail de redefinição foi disparado
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Redefine senha
+      description: Redefine a senha de um usuário a partir de um token enviado por e-mail.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: Senha redefinida com sucesso
+        '400':
+          description: Token inválido ou regras de senha não atendidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/dashboard:
+    get:
+      tags: [Admin]
+      summary: Dashboard do administrador
+      description: Retorna indicadores gerais de sponsors, members e benefícios.
+      responses:
+        '200':
+          description: Indicadores do dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDashboard'
+
+  /users:
+    get:
+      tags: [Users]
+      summary: Lista usuários
+      parameters:
+        - in: query
+          name: type
+          schema:
+            $ref: '#/components/schemas/UserTypeEnum'
+          description: Filtra por tipo de usuário
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Lista paginada de usuários
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageUserDTO'
+    post:
+      tags: [Users]
+      summary: Cria um novo usuário
+      description: Cria um usuário e, conforme o tipo, registros correspondentes em sponsors/members.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateDTO'
+      responses:
+        '201':
+          description: Usuário criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDTO'
+        '400':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{userId}:
+    get:
+      tags: [Users]
+      summary: Detalha usuário
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '200':
+          description: Dados do usuário
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDTO'
+        '404':
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Users]
+      summary: Atualiza usuário
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateDTO'
+      responses:
+        '200':
+          description: Usuário atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDTO'
+
+  /sponsors:
+    get:
+      tags: [Sponsors]
+      summary: Lista patrocinadores
+      parameters:
+        - in: query
+          name: active
+          schema:
+            type: boolean
+          description: Filtra por ativos/inativos
+        - in: query
+          name: tier
+          schema:
+            $ref: '#/components/schemas/SponsorTierEnum'
+          description: Filtra por tier (Bronze/Prata/Ouro)
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Lista paginada de patrocinadores
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageSponsorDTO'
+    post:
+      tags: [Sponsors]
+      summary: Cria patrocinador
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SponsorCreateDTO'
+      responses:
+        '201':
+          description: Patrocinador criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SponsorDTO'
+
+  /sponsors/{sponsorId}:
+    get:
+      tags: [Sponsors]
+      summary: Detalha patrocinador
+      parameters:
+        - $ref: '#/components/parameters/SponsorIdParam'
+      responses:
+        '200':
+          description: Dados do patrocinador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SponsorDTO'
+        '404':
+          description: Patrocinador não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Sponsors]
+      summary: Atualiza patrocinador
+      parameters:
+        - $ref: '#/components/parameters/SponsorIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SponsorUpdateDTO'
+      responses:
+        '200':
+          description: Patrocinador atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SponsorDTO'
+
+  /sponsors/{sponsorId}/logo:
+    put:
+      tags: [Sponsors]
+      summary: Atualiza logo do patrocinador
+      parameters:
+        - $ref: '#/components/parameters/SponsorIdParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Logo atualizada com sucesso
+
+  /sponsors/{sponsorId}/checkins:
+    get:
+      tags: [Sponsors, Checkins]
+      summary: Lista check-ins de um patrocinador
+      parameters:
+        - $ref: '#/components/parameters/SponsorIdParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Lista paginada de check-ins do patrocinador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCheckinDTO'
+
+  /members:
+    get:
+      tags: [Members]
+      summary: Lista membros
+      parameters:
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/MemberStatusEnum'
+          description: Status da assinatura/relacionamento
+        - in: query
+          name: type
+          schema:
+            $ref: '#/components/schemas/MemberTypeEnum'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Lista paginada de membros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageMemberDTO'
+    post:
+      tags: [Members]
+      summary: Cria membro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemberCreateDTO'
+      responses:
+        '201':
+          description: Membro criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberDTO'
+
+  /members/{memberId}:
+    get:
+      tags: [Members]
+      summary: Detalha membro
+      parameters:
+        - $ref: '#/components/parameters/MemberIdParam'
+      responses:
+        '200':
+          description: Dados do membro
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberDTO'
+        '404':
+          description: Membro não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Members]
+      summary: Atualiza membro
+      parameters:
+        - $ref: '#/components/parameters/MemberIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemberUpdateDTO'
+      responses:
+        '200':
+          description: Membro atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberDTO'
+
+  /members/{memberId}/subscription:
+    get:
+      tags: [Members]
+      summary: Consulta assinatura do membro
+      parameters:
+        - $ref: '#/components/parameters/MemberIdParam'
+      responses:
+        '200':
+          description: Dados da assinatura
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriberMemberDTO'
+    post:
+      tags: [Members]
+      summary: Cria configuração de assinatura do membro
+      parameters:
+        - $ref: '#/components/parameters/MemberIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriberMemberCreateDTO'
+      responses:
+        '201':
+          description: Assinatura criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriberMemberDTO'
+    put:
+      tags: [Members]
+      summary: Atualiza assinatura do membro
+      parameters:
+        - $ref: '#/components/parameters/MemberIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriberMemberUpdateDTO'
+      responses:
+        '200':
+          description: Assinatura atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriberMemberDTO'
+
+  /members/{memberId}/sponsorships:
+    post:
+      tags: [Members, Sponsors]
+      summary: Cria vínculo de patrocínio para o membro
+      parameters:
+        - $ref: '#/components/parameters/MemberIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SponsoredMemberCreateDTO'
+      responses:
+        '201':
+          description: Vínculo de patrocínio criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SponsoredMemberDTO'
+
+  /members/{memberId}/checkins:
+    get:
+      tags: [Members, Checkins]
+      summary: Lista check-ins de um membro
+      parameters:
+        - $ref: '#/components/parameters/MemberIdParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Lista paginada de check-ins do membro
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCheckinDTO'
+
+  /benefits:
+    get:
+      tags: [Benefits]
+      summary: Lista benefícios
+      parameters:
+        - in: query
+          name: sponsorId
+          schema:
+            type: string
+            format: uuid
+          description: Filtra benefícios por patrocinador
+        - in: query
+          name: active
+          schema:
+            type: boolean
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Lista paginada de benefícios
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageBenefitDTO'
+    post:
+      tags: [Benefits]
+      summary: Cria benefício
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BenefitCreateDTO'
+      responses:
+        '201':
+          description: Benefício criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BenefitDTO'
+
+  /benefits/{benefitId}:
+    get:
+      tags: [Benefits]
+      summary: Detalha benefício
+      parameters:
+        - $ref: '#/components/parameters/BenefitIdParam'
+      responses:
+        '200':
+          description: Dados do benefício
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BenefitDTO'
+        '404':
+          description: Benefício não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Benefits]
+      summary: Atualiza benefício
+      parameters:
+        - $ref: '#/components/parameters/BenefitIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BenefitUpdateDTO'
+      responses:
+        '200':
+          description: Benefício atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BenefitDTO'
+
+  /checkins:
+    post:
+      tags: [Checkins]
+      summary: Registra check-in patrocinador ↔ membro
+      description: |
+        Usado pelo patrocinador autenticado para validar um membro pelo seu código.
+        Apenas membros ativos podem retornar status OK.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckinCreateDTO'
+      responses:
+        '201':
+          description: Check-in registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckinDTO'
+        '400':
+          description: Membro inválido ou inativo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /me:
+    get:
+      tags: [Me]
+      summary: Dados do usuário logado
+      description: Retorna dados do usuário logado e, se for membro, status da assinatura/patrocínio.
+      responses:
+        '200':
+          description: Dados do usuário logado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeDTO'
+
+  /me/card:
+    get:
+      tags: [Me]
+      summary: Carteirinha do associado
+      description: Retorna dados da carteirinha do membro logado.
+      responses:
+        '200':
+          description: Dados da carteirinha
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberCardDTO'
+
+  /me/checkins:
+    get:
+      tags: [Me, Checkins]
+      summary: Check-ins do membro logado
+      responses:
+        '200':
+          description: Lista de check-ins do membro logado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCheckinDTO'
+
+  /me/benefits:
+    get:
+      tags: [Me, Benefits]
+      summary: Benefícios do membro logado
+      responses:
+        '200':
+          description: Lista de benefícios disponíveis para o membro logado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageBenefitDTO'
+
+  /me/sponsor:
+    get:
+      tags: [Me, Sponsors]
+      summary: Dados do patrocinador logado
+      responses:
+        '200':
+          description: Dados do patrocinador vinculado ao usuário logado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SponsorDTO'
+
+  /me/sponsor/benefits:
+    get:
+      tags: [Me, Sponsors, Benefits]
+      summary: Benefícios do patrocinador logado
+      responses:
+        '200':
+          description: Lista de benefícios cadastrados para o patrocinador logado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageBenefitDTO'
+
+  /me/sponsor/checkins:
+    get:
+      tags: [Me, Sponsors, Checkins]
+      summary: Check-ins do patrocinador logado
+      responses:
+        '200':
+          description: Lista de check-ins realizados pelo patrocinador logado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCheckinDTO'
+
+components:
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: Página (0-based)
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    SizeParam:
+      name: size
+      in: query
+      description: Tamanho da página
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    UserIdParam:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SponsorIdParam:
+      name: sponsorId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MemberIdParam:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    BenefitIdParam:
+      name: benefitId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    # ---- Genéricos ----
+    ResponseModel:
+      type: object
+      description: Modelo de resposta padrão do backoffice (referência).
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Código de erro de negócio (MessageErrorEnum)
+        message:
+          type: string
+        details:
+          type: object
+          nullable: true
+
+    Page:
+      type: object
+      properties:
+        content:
+          type: array
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+
+    # ---- Auth ----
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserDTO'
+
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    ResetPasswordRequest:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+          description: |
+            Regras variam conforme tipo de usuário:
+            - Patrocinador: >= 8 chars, 1 número, 1 especial, 1 maiúscula
+            - Membro: 8-12 chars, 1 especial, 1 maiúscula
+
+    # ---- Admin ----
+    AdminDashboard:
+      type: object
+      properties:
+        activeSponsors:
+          type: integer
+        activeMembers:
+          type: integer
+        membersWithPendingPayments:
+          type: integer
+        activeBenefits:
+          type: integer
+
+    # ---- Users ----
+    UserTypeEnum:
+      type: string
+      enum: [ADM, SPONSOR, MEMBER, SPONSOR_MEMBER]
+
+    UserDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          description: Código único de identificação do usuário
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        type:
+          $ref: '#/components/schemas/UserTypeEnum'
+        isAccountActive:
+          type: boolean
+
+    UserCreateDTO:
+      type: object
+      required: [name, email, type]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        type:
+          $ref: '#/components/schemas/UserTypeEnum'
+
+    UserUpdateDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        type:
+          $ref: '#/components/schemas/UserTypeEnum'
+        isAccountActive:
+          type: boolean
+
+    PageUserDTO:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserDTO'
+
+    # ---- Sponsors ----
+    SponsorTierEnum:
+      type: string
+      enum: [BRONZE, SILVER, GOLD]
+
+    SponsorDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        entityType:
+          type: string
+          enum: [PERSON, COMPANY]
+        tier:
+          $ref: '#/components/schemas/SponsorTierEnum'
+        isActive:
+          type: boolean
+        lastActiveSponsorship:
+          type: string
+          format: date-time
+          nullable: true
+        logoPath:
+          type: string
+          nullable: true
+
+    SponsorCreateDTO:
+      type: object
+      required: [userId, name, entityType, tier]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        entityType:
+          type: string
+          enum: [PERSON, COMPANY]
+        tier:
+          $ref: '#/components/schemas/SponsorTierEnum'
+
+    SponsorUpdateDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        entityType:
+          type: string
+          enum: [PERSON, COMPANY]
+        tier:
+          $ref: '#/components/schemas/SponsorTierEnum'
+        isActive:
+          type: boolean
+
+    PageSponsorDTO:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/SponsorDTO'
+
+    # ---- Members ----
+    MemberStatusEnum:
+      type: string
+      enum: [ATIVO, ATRASADO, DESATIVADO, PATROCINADO]
+
+    MemberTypeEnum:
+      type: string
+      enum: [SUBSCRIBER, SPONSORED]
+
+    MemberDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/MemberTypeEnum'
+        status:
+          $ref: '#/components/schemas/MemberStatusEnum'
+
+    MemberCreateDTO:
+      type: object
+      required: [userId, name, type]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/MemberTypeEnum'
+
+    MemberUpdateDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/MemberTypeEnum'
+
+    PageMemberDTO:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/MemberDTO'
+
+    # ---- SubscriberMember (assinatura) ----
+    SubscriberStatusEnum:
+      type: string
+      enum: [ACTIVE, PENDING, INACTIVE]
+
+    SubscriberMemberDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        memberId:
+          type: string
+          format: uuid
+        monthlyValue:
+          type: number
+          format: double
+          description: Valor da mensalidade (padrão R$ 20,00)
+        dueDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+        nextChargeDate:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/SubscriberStatusEnum'
+
+    SubscriberMemberCreateDTO:
+      type: object
+      required: [monthlyValue, dueDay]
+      properties:
+        monthlyValue:
+          type: number
+          format: double
+        dueDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+
+    SubscriberMemberUpdateDTO:
+      type: object
+      properties:
+        monthlyValue:
+          type: number
+          format: double
+        dueDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+        status:
+          $ref: '#/components/schemas/SubscriberStatusEnum'
+
+    # ---- SponsoredMember (patrocínio) ----
+    SponsoredMemberDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        memberId:
+          type: string
+          format: uuid
+        sponsorId:
+          type: string
+          format: uuid
+        isActive:
+          type: boolean
+
+    SponsoredMemberCreateDTO:
+      type: object
+      required: [sponsorId]
+      properties:
+        sponsorId:
+          type: string
+          format: uuid
+
+    # ---- Benefits ----
+    BenefitDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        sponsorId:
+          type: string
+          format: uuid
+          nullable: true
+        isActive:
+          type: boolean
+
+    BenefitCreateDTO:
+      type: object
+      required: [title, description]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        sponsorId:
+          type: string
+          format: uuid
+          nullable: true
+
+    BenefitUpdateDTO:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        isActive:
+          type: boolean
+
+    PageBenefitDTO:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/BenefitDTO'
+
+    # ---- Checkins ----
+    CheckinDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sponsorId:
+          type: string
+          format: uuid
+        memberId:
+          type: string
+          format: uuid
+        memberCode:
+          type: string
+        status:
+          type: string
+          description: Resultado da validação (ex.: OK, INACTIVE_MEMBER, NOT_FOUND, etc.)
+        createdAt:
+          type: string
+          format: date-time
+
+    CheckinCreateDTO:
+      type: object
+      required: [memberCode]
+      properties:
+        memberCode:
+          type: string
+          description: Código único do membro
+
+    PageCheckinDTO:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            content:
+              type: array
+              items:
+                $ref: '#/components/schemas/CheckinDTO'
+
+    # ---- Me / Área logada ----
+    MeDTO:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/UserDTO'
+        member:
+          $ref: '#/components/schemas/MemberDTO'
+          nullable: true
+        sponsor:
+          $ref: '#/components/schemas/SponsorDTO'
+          nullable: true
+        subscription:
+          $ref: '#/components/schemas/SubscriberMemberDTO'
+          nullable: true
+        currentStatus:
+          type: string
+          description: Status consolidado apresentado na área logada (ex.: ATIVO, ATRASADO, PATROCINADO)
+
+    MemberCardDTO:
+      type: object
+      properties:
+        memberId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          description: Código/carteirinha do associado
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/MemberStatusEnum'
