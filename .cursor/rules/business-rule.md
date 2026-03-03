@@ -60,68 +60,6 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
 
 #### Módulo III - Gestão dos Patrocinadores
 
-##### Entidades
-
-<details>
-  <summary><strong>User</strong></summary>
-
-  - `id`
-  - `name`
-  - `email`
-  - `whatsapp`
-  - `password`
-  - `is_valid_email`
-  - `type` - ADM, SPONSOR, MEMBER
-  - `created_at`
-  - `updated_at`
-</details>
-
-<details>
-  <summary><strong>Sponsor (patrocinador)</strong></summary>
-
-  - `id`
-  - `public_name` - Se for empresa é o nome associado ao CNPJ se for CPF o nome público completo
-  - `document` - CNPJ ou CPF
-  - `tier` - BRONZE, SILVER, GOLD
-  - `logo`
-  - `site` | `instagram` | `contact` - Campos de links acionáveis
-  - `is_active` - Se há patrocínio ativo ou não
-  - `last_active_sponsorship`- data do último patrocinio (preenchido com data quando is_active se torna false)
-  - `created_at`
-  - `updated_at`
-</details>
-
-<details>
-  <summary><strong>Member (associado)</strong></summary>
-
-  - `id`
-  - `document` - CPF
-  - `member_id` - Número do associado, aparecerá na carteirinha dele
-  - `is_active` - Se está com a mensalidade em dias
-  - `type` - SUBSCRIBER, SPONSORED
-  - `created_at`
-  - `updated_at`
-</details>
-
-<details>
-  <summary><strong>Generate_Pass_Code</strong></summary>
-
-  - `code`
-  - `is_active`
-  - `user_id`
-</details>
-
-
-<details>
-  <summary><strong>Benefits</strong></summary>
-
-  - `id`
-  - `sponsor_id` - Pode estar vinculado a um sponsor ou não
-  - `name`
-  - `description`
-  - `is_active`
-</details>
-
 ##### ADM - Caso de Uso 
 
 - Deve ser capaz de logar na plataforma
@@ -137,6 +75,47 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
   - ADM deve ser capaz de atualizar os campos do _sponsors_: `public_name`, `document`, `tier`, `logo_url`, `site`, `instagram`, `whatsapp` ao mesmo tempo mas não necessariamente, se optar por atualizar somente um único campo, deve ser possível
     - As logos devem ser salvas no R2 da cloudflare e somente o path do arquivo estático salvo no banco de dados
       - Salvar no bucket chamado: `sponsors_logo`
+
+#### Relacionamentos entre parceiros (Adm's, Sponsors, Members)
+
+- **User como raiz de parceiros**
+  - Todo `Sponsor` e todo `Member` deve estar vinculado a exatamente um `User` (via `user_id`), conforme o DER em `backoffice.dbml`.
+  - O campo `users.type` indica se existirão registros em `sponsors`, `members` ou ambos:
+    - `ADM` → apenas acesso de administração (pode não ter `Sponsor`/`Member` vinculado).
+    - `SPONSOR` → deve existir um registro em `sponsors` vinculado ao mesmo `User`.
+    - `MEMBER` → deve existir um registro em `members` vinculado ao mesmo `User`.
+    - `SPONSOR_MEMBER` → **ATENÇÃO – POSSÍVEL CONFLITO**: o DER prevê essa possibilidade, mas as regras de negócio ainda não definem se haverá sempre dois registros (`Sponsor` + `Member`) compartilhando o mesmo `User` ou outra modelagem; essa decisão deve ser explicitada antes de implementar.
+
+- **Members, tipos e vínculos**
+  - `Member.type = SUBSCRIBER`:
+    - Deve existir um registro correspondente em `subscriber_member` (configuração de cobrança) para o mesmo `member_id`.
+    - O status de cobrança em `subscriber_member.status` deve ser coerente com o status apresentado na área logada (ATIVO, ATRASADO, DESATIVADO).
+  - `Member.type = SPONSORED`:
+    - Deve existir pelo menos um registro ativo em `sponsored_member` vinculado ao `Member`.
+    - Quando não houver nenhum patrocínio ativo, o `Member` não deve ser tratado como `SPONSORED` para fins de benefícios que dependem de patrocínio da associação.
+
+- **Benefícios e patrocinadores**
+  - Se `benefits.sponsor_id` estiver preenchido:
+    - O benefício é considerado “patrocinado” por aquele `Sponsor`.
+    - Se o `Sponsor` estiver inativo (`is_active = false`), seus benefícios não devem ser exibidos/publicados para novos usos, mas podem ser mantidos para histórico.
+  - Se `benefits.sponsor_id` for nulo:
+    - O benefício é geral (vinculado apenas à associação) e não depende de patrocinador específico.
+
+- **Check-in patrocinador ↔ associado (`sponsors_members_checkin`)**
+  - Cada registro em `sponsors_members_checkin` representa um evento de validação entre um `Sponsor` e um `Member` em uma data/hora específica.
+  - A combinação `(sponsor_id, member_id)` deve sempre ser coerente com o estado atual:
+    - Podem existir múltiplos registros ao longo do tempo.
+    - Sempre que um `member` passar por uma validação com um `sponsor` (parceiro) um registro nestra tabela deverá ser criada para fins de histórico, se o `member` foi validado ou não
+
+- **Desativação e efeitos em cadeia**
+  - Ao desativar um `Sponsor`:
+    - Seus benefícios (`benefits` com `sponsor_id` correspondente) deixam de ser exibidos, independentemente de `benefits.is_active`.
+    - Check-ins históricos continuam válidos apenas para consulta, não para validações futuras.
+  - Ao mudar o tipo de um `Member` (`SUBSCRIBER` ↔ `SPONSORED`):
+    - O registro deste membro em `subscriber_member` deve conter o `status` = `INACTIVE`
+    - Um `subscriber_member` com `status = INACTIVE` significa OU que o membro foi desligado administrativamente por algum motivo OU que ele se tornou um membro patrocinado
+    - A dinâmica entre `sponsored_member.is_active` e `subscriber_member.status` deve suprir todos os casos
+    - Não é possível ser um `member` assinante e patrocinado ao mesmo tempo
 
 
 #### Módulo IV - Gestão dos Membros (associados)

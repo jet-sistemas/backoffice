@@ -7,6 +7,7 @@ Enum user_type_enum {
   ADM
   SPONSOR
   MEMBER
+  SPONSOR_MEMBER // Tanto patrocinador
 }
 
 Enum sponsor_tier_enum {
@@ -38,7 +39,7 @@ Enum member_status_enum {
   ACTIVE      // em dia e habilitado
   DUE_SOON    // perto do vencimento (opcional)
   OVERDUE     // com mensalidade atrasada
-  INACTIVE    // desativado administrativamente
+  INACTIVE    // desativado administrativamente - significa um assinante desligado ou que ele virou um patrocinado
 }
 
 Table users {
@@ -46,14 +47,22 @@ Table users {
   email            varchar(255) [not null, unique]
   password         varchar(20) [not null]
 
+  name                    varchar(255) [not null]
+  document         varchar(20) [not null, unique]
+  code             varchar(5) [not null, unique]
+
   is_account_active boolean [default: false]
 
-  type             user_type_enum [not null, default: 'MEMBER']
+  type             user_type_enum [not null, default: 'MEMBER'] // Se for os dois, o document deve ser igual a CPF
 
-  profile_url      varchar
+  avatar_url      varchar
 
   created_at       timestamp
   updated_at       timestamp
+
+  indexes {
+    (email, document, code)
+  }
 
   Note: 'User'
 }
@@ -61,10 +70,8 @@ Table users {
 Table sponsors {
   id                      uuid [pk]
   user_id                 uuid [ref: - users.id, not null]  
-  name                    varchar(255) [not null]
   public_name             varchar(255) [not null] // nome associado ao CNPJ/CPF ou nome público completo
-  document         varchar(20) [not null, unique]
-  code             varchar(5) [not null, unique]
+
 
   tier                    sponsor_tier_enum [not null, default: "BRONZE"]
   entity_type             sponsor_entity_type_enum [not null]
@@ -86,9 +93,7 @@ Table sponsors {
 Table members {
   id                    uuid [pk]
   user_id               uuid [ref: - users.id, not null]
-  name                  varchar(255) [not null]
-  document         varchar(20) [not null, unique]
-  code             varchar(5) [not null, unique]
+  fullname                  varchar(255) [not null]
 
   whatsapp              varchar(50) [not null, unique]
 
@@ -124,7 +129,7 @@ Table benefits {
 
 Table sponsored_member {
   member_id uuid [ref: - members.id]  // membro patrocinado
-  granted_by_user_id uuid [ref: - users.id]  // quem vinculou ele
+  granted_by_user_id uuid [ref: > users.id]  // quem vinculou ele é sempre um ADM, mas o member DEVE sempre ser um usuário member
 
   start_at date [not null]
   end_at   date
