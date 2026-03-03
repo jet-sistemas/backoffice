@@ -22,7 +22,7 @@
 - Área de validação de associado para patrocinadores
 - Área do associado com visualização de dados, status e benefícios
 
-### Enciclopédia
+## Enciclopédia
 
 #### Associação Desportiva Artística e Cultural Joyce e Teatino
 
@@ -56,27 +56,67 @@ Entusiastas e atletas que desejam fazer parte da associação. Eles terão acess
 
 São os administradores da plataforma. Eles terão acesso ao backoffice e gerenciarão a plataforma como um todo.
 
-### Requisitos
+## Requisitos
 
-#### Módulo III - Gestão dos Patrocinadores
-
-##### ADM - Caso de Uso 
+### ADM - Caso de Uso 
 
 - Deve ser capaz de logar na plataforma
   - Ao fazer login deve visualizar os patrocinadores ativos na plataforma
 - ADM deve ser capaz de criar um novo usuário (table_name `users`)
   - Durante o cadastro, deve-se salvar as informações relativas aos `members` ou `sponsors` dependendo do `users.type`
-  - Deve vir ativo por padrão
+  - Se `sponsors.entity_type = PERSON`, os dados da pessoa devem ser preenchidos na tabela de pessoas correspondente
+  - O campo/código de identificação gerado para o usuário deve ser único
 - ADM deve ser capaz de atualizar um _sponsor_
   - Ao desativar um _sponsor_, os beneficios relacionados a ele devem ser omitidos
   - Somente _sponsors_ ativos devem aparecer no site
     - O endpoint de listagem deve conter filtro por `tier`
   - Ao desativar um _sponsor_, o campo `last_active_sponsorship` deve ser preenchido com a data
-  - ADM deve ser capaz de atualizar os campos do _sponsors_: `public_name`, `document`, `tier`, `logo_url`, `site`, `instagram`, `whatsapp` ao mesmo tempo mas não necessariamente, se optar por atualizar somente um único campo, deve ser possível
+  - ADM deve ser capaz de atualizar os campos do _sponsors_
     - As logos devem ser salvas no R2 da cloudflare e somente o path do arquivo estático salvo no banco de dados
       - Salvar no bucket chamado: `sponsors_logo`
+- ADM deve ser capaz de cadastrar benefícios
+  - Benefícios podem ser gerais (apenas associação) ou vinculados a um `sponsor`
+  - Benefícios vinculados a `sponsor` só devem ser exibidos se o patrocinador estiver ativo
+- ADM deve ser capaz de gerir patrocinadores
+  - Criar, editar e inativar patrocinadores
+  - Visualizar os benefícios associados a cada patrocinador
+  - Visualizar o histórico de validações realizadas por um patrocinador (check-ins)
+- ADM deve ser capaz de gerir membros
+  - Criar, editar e inativar membros
+  - Visualizar o status atual da assinatura do membro (ATIVO, ATRASADO, DESATIVADO, PATROCINADO)
+  - Visualizar o histórico de check-ins realizados pelo membro
+- Fluxo de relacionamento patrocinador ↔ membro
+  - Cada vez que um patrocinador validar um membro, deve-se ser criado um registro de log em `sponsors_member_checkin`
+- Regras de assinatura (membro assinante)
+  - O valor padrão da mensalidade deve ser **R$ 20,00**, permitindo inserção inicial diferente OU alteração posterior pelo ADM
+  - O dia de pagamento da mensalidade deve estar entre **1** e **31**
+  - A data da próxima cobrança deve ser calculada automaticamente mesmo em meses em que o dia escolhido não exista (por exemplo, dia 31)
+- Regras de acesso do usuário
+  - O acesso pela área logada só deve ser permitido se `is_account_active = true`
+  - Usuários com `is_account_active = false` não devem conseguir realizar login
 
-#### Relacionamentos entre parceiros (Adm's, Sponsors, Members)
+### Patrocinador - Caso de Uso
+
+- Deve ser capaz de acessar a tela de alteração de senha através de um link enviado por e-mail
+- Deve ser capaz de criar uma senha para o seu acesso
+  - A senha deve conter pelo menos **8 caracteres**, com no mínimo **1 número**, **1 caractere especial** e **1 letra maiúscula**
+- Deve poder validar membros pelo **código** de cada membro
+  - Somente membros ativos podem retornar status **OK** em uma validação
+- Deve ser capaz de listar, com paginação, todas as validações/check-ins realizados por ele
+- Deve ser capaz de visualizar todos os benefícios cadastrados em seu nome como patrocinador
+
+### Membro - Caso de Uso
+
+- Deve ser capaz de acessar a tela de alteração de senha através de um link enviado por e-mail
+- Deve ser capaz de criar uma senha para o seu acesso
+  - A senha deve conter entre **8 e 12 caracteres**, com no mínimo **1 caractere especial** e **1 letra maiúscula**
+- Deve ser capaz de visualizar:
+  - Sua carteirinha de associado
+  - O status atual da sua assinatura se tiver ou "PATROCINADO" se ele for patrocinado e não assinante
+  - Todos os check-ins realizados por ele
+  - Todos os benefícios disponíveis para o seu perfil (considerando assinatura e/ou patrocínio vigente)
+
+### Relacionamentos entre parceiros (Adm's, Sponsors, Members)
 
 - **User como raiz de parceiros**
   - Todo `Sponsor` e todo `Member` deve estar vinculado a exatamente um `User` (via `user_id`), conforme o DER em `backoffice.dbml`.
@@ -116,28 +156,6 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
     - Um `subscriber_member` com `status = INACTIVE` significa OU que o membro foi desligado administrativamente por algum motivo OU que ele se tornou um membro patrocinado
     - A dinâmica entre `sponsored_member.is_active` e `subscriber_member.status` deve suprir todos os casos
     - Não é possível ser um `member` assinante e patrocinado ao mesmo tempo
-
-
-#### Módulo IV - Gestão dos Membros (associados)
-##### ADM - Caso de Uso
-- Deve ser capaz de criar um membro
-- Deve ser capaz de visualizar os membros que estão ativos e os que estão com a mensalidade atrasada
-  - Discernir se: Membro está ATIVO, ATRASADO (falta pagar mensalidade) ou DESATIVADO
-
-#### Módulo V - Áreas Logadas
-##### ADM - Caso de Uso
-- Durante a criação de um novo usuário
-  - Um email deverá ser enviado ao _user_ para ele criar a sua senha
-    - O email deverá conter:
-      - Template com logo da associação, texto informando o clique do botão ou copiar/colar link no navegador para salvar a senha
-      - O link deverá ter um código de uso único, ao ser utilizado perde valia
-      - Se for _sponsor_
-        - Ao abrir o link de criar senha ele deve informar o CNPJ, o código e a nova senha
-      - Se for _member_
-        - Ao abrir o link de criar senha ele deve informar o CPF, o código e a nova senha
-    - Em caso de falha ou envio para email indevido o ADM deve ser capaz de enviar um novo código por e-mail
-    - Não deve existir dois códigos ativos para o mesmo usuário
-      - No reenvio do código, deve validar se o primeiro já está desativado, se não, desativá-lo
 
 
 #### Módulo Extra - Ideias
