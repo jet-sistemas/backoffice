@@ -6,6 +6,11 @@
   - Follow Jakarta EE and MicroProfile conventions, ensuring clarity in package organization.
   - Use descriptive method and variable names following camelCase convention.
   - Structure your application with consistent organization (e.g., resources, services, repositories, entities, configuration).
+  - The controller and service layer must use dto's 
+    - The comunication between dto's and entities will be through mapper classes. Ex: `src/main/java/backoffice/common/mappers/UserMapper.java`
+  - All api responses must follow model `src/main/java/backoffice/common/requests/ResponseModel.java`
+  - All error must be handled by `src/main/java/backoffice/common/exceptions/GlobalExceptionMapper.java`
+    - All error messages must be mapped into `src/main/java/backoffice/common/exceptions/MessageErrorEnum.java`
 
   Quarkus Specifics
   - Leverage Quarkus Dev Mode for faster development cycles.

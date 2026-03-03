@@ -1,4 +1,4 @@
-package project.common.exceptions;
+package backoffice.common.exceptions;
 
 import java.util.List;
 
@@ -6,12 +6,12 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
-import project.common.exceptions.customs.BadRequestException;
-import project.common.exceptions.customs.BusinessException;
-import project.common.exceptions.customs.ConflictException;
-import project.common.exceptions.customs.ForbiddenException;
-import project.common.exceptions.customs.NotFoundException;
-import project.common.requests.ResponseModel;
+import backoffice.common.exceptions.customs.BadRequestException;
+import backoffice.common.exceptions.customs.BusinessException;
+import backoffice.common.exceptions.customs.ConflictException;
+import backoffice.common.exceptions.customs.ForbiddenException;
+import backoffice.common.exceptions.customs.NotFoundException;
+import backoffice.common.requests.ResponseModel;
 
 @Provider
 public class GlobalExceptionMapper implements ExceptionMapper<Throwable> {
