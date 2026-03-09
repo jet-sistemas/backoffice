@@ -71,7 +71,7 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
   - Durante o cadastro, deve-se salvar as informações relativas aos `members` ou `sponsors` dependendo do `users.type`
     - O Dto de criação deve refletir a necessidade de vir "member" ou "sponsor" com seus respectivos dados de acordo com o tipo de usuário criado
   - Se `sponsors.entity_type = PERSON`, os dados da pessoa devem ser preenchidos na tabela de pessoas correspondente
-  - O campo/código de identificação gerado para o usuário deve ser único
+  - O campo `code` é obrigatório, deve conter exatamente 5 caracteres e deve ser único
     - Verificar se já existe um `code` com o mesmo valor
     - Campos marcados como único também devem ser validados e um erro personalizado deve ser retornado
 - ADM deve ser capaz de atualizar um _sponsor_

@@ -3,8 +3,10 @@ package backoffice.v1.resources;
 import backoffice.common.database.Pageable;
 import backoffice.common.requests.ResponseModel;
 import backoffice.v1.dtos.common.PageDTO;
-import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
+import backoffice.v1.dtos.sponsor.SponsorCreateDTO;
+import backoffice.v1.dtos.sponsor.SponsorDTO;
 import backoffice.v1.entities.enums.SponsorTierEnum;
+import backoffice.v1.services.AdminService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -29,15 +31,15 @@ public class AdminResource {
   @POST
   @Path("/sponsor")
   public Response createSponsor(@Valid SponsorCreateDTO dto) {
-    var result = service.createAgent(dto);
+    var result = service.createSponsor(dto);
 
-    var response = ResponseModel.success(Response.Status.OK.getStatusCode(), result);
+    var response = ResponseModel.success(Status.CREATED.getStatusCode(), result);
 
-    return Response.ok(response).build();
+    return Response.status(Status.CREATED).entity(response).build();
   }
 
   @GET
-  @Path("/agent")
+  @Path("/sponsor")
   public Response listSponsors(@QueryParam("tier") SponsorTierEnum tier,
       @QueryParam("page") Integer page,
       @QueryParam("size") Integer size) {
