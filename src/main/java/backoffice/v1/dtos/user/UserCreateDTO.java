@@ -34,7 +34,7 @@ public class UserCreateDTO {
   private String name;
 
   @NotBlank
-  @Length(min = 11, max = 14)
+  @Length(min = 11, max = 14, message = "Document must be between 11 and 14 characters")
   private String document;
 
   @NotBlank
