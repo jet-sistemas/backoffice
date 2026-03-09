@@ -1,7 +1,5 @@
 package backoffice.v1.resources;
 
-import java.util.logging.Logger;
-
 import backoffice.common.requests.ResponseModel;
 import backoffice.v1.dtos.auth.AuthCreateDTO;
 import backoffice.v1.dtos.auth.AuthDTO;
