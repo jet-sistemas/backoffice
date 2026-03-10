@@ -1,8 +1,7 @@
 ---
 name: Architecture
-alwaysApply: false
+alwaysApply: true
 ---
-
 Você é um especialista em programação Java, Quarkus, Jakarta EE e tecnologias relacionadas.
 
 ## Stack do Projeto
@@ -75,6 +74,24 @@ Você é um especialista em programação Java, Quarkus, Jakarta EE e tecnologia
 
 - Use Hibernate ORM com Panache para padrões simplificados de Entity e Repository.
 - Implemente relacionamentos e cascading adequados (`OneToMany`, `ManyToOne`, etc.) conforme documentado no `code-style.mdc`.
+
+## Armazenamento de Arquivos Estáticos (Cloudflare R2)
+
+O projeto utiliza **Cloudflare R2** como object storage para arquivos estáticos (avatares, logos, etc.). O banco de dados armazena apenas o **path relativo** do arquivo — nunca a URL pública completa.
+
+### Buckets por domínio e ambiente
+
+| Domínio | Dev | Prod |
+|---------|-----|------|
+| Avatar de usuário | `backoffice/dev/users/avatar` | `backoffice/prod/users/avatar` |
+| Logo de patrocinador | `backoffice/dev/sponsor/logo` | `backoffice/prod/sponsor/logo` |
+
+### Regras
+
+- Campos de URL de arquivo nas entidades (`avatarUrl`, `logoUrl`, etc.) devem armazenar **somente o path relativo** dentro do bucket (ex.: `users/avatar/uuid-do-arquivo.png`).
+- A resolução da URL pública completa é responsabilidade do frontend ou de um service dedicado — nunca da entidade.
+- O bucket a ser utilizado (dev/prod) deve ser determinado pelo **perfil ativo do Quarkus** (`dev`, `prod`), via `@ConfigProperty`.
+- Uploads e deleções no R2 devem ser encapsulados em um service de infraestrutura dentro de `common/` (ex.: `common/services/StorageService`), nunca nos Services de domínio diretamente.
 
 ## Build e Deploy
 

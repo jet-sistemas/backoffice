@@ -71,6 +71,7 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
 
 - Deve ser capaz de logar na plataforma
   - Ao fazer login deve visualizar os patrocinadores ativos na plataforma
+
 - ADM deve ser capaz de criar um novo usuário (table_name `users`)
   - Durante o cadastro, deve-se salvar as informações relativas aos `members` ou `sponsors` dependendo do `users.type`
     - O Dto de criação deve refletir a necessidade de vir "member" ou "sponsor" com seus respectivos dados de acordo com o tipo de usuário criado
@@ -78,6 +79,26 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
   - O campo `code` é obrigatório, deve conter exatamente 5 caracteres e deve ser único
     - Verificar se já existe um `code` com o mesmo valor
     - Campos marcados como único também devem ser validados e um erro personalizado deve ser retornado
+
+- ADM deve ser capaz de atualizar um _user_
+  - `avatar_url` deve conter somente a referência ao R2
+  - O bucket do R2 se chamará: `backoffice/dev/users/avatar` e `backoffice/prod/users/avatar`
+  - O `user.type` segue a regrá de negócio que:
+    - Somente um usuário ADM pode mudar a permissão de um user não ADM para ADM
+    - Somente ADM's podem gerenciar usuários
+    - Caso ADM atualize um `sponsor` para `member`
+      - Deve-se inativar o registro na tabela sponsor bem como todos os benefícios atrelados a ele
+      - Cadastrar se já não existir dados relacionado a `member`
+      - Se for um `member` SUBSCRIBER deverá informar os dados relativos a `subscriber_member`
+      - Se for um `member` SPONSORED deverá informar os dados relativos a `sponsored_member`
+    - Caso ADM atualize um `member` para `sponsor`
+      - Deve-se inativar o registro em `member`
+      - Cadastrar se já não existir dados relacionado a `sponsor`
+        - Aplicar a lógica entre `entity_type` e o `persona` descrito neste mesmo documento
+    - Caso ADM atualize um `member` ou `sponsor` para `sponsor_member`
+      - O código deve ser inclusivo: Se for member, o usuário atualizado deve constar com registro ativo em sponsor
+      - O código deve ser inclusivo: Se for sposor, o usuário atualizado deve constar com registro ativo em member, bem como `subscriber_member` ou `sponsored_member`
+    
 - ADM deve ser capaz de atualizar um _sponsor_
   - Ao desativar um _sponsor_, os beneficios relacionados a ele devem ser omitidos
   - Somente _sponsors_ ativos devem aparecer no site
@@ -85,24 +106,30 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
   - Ao desativar um _sponsor_, o campo `last_active_sponsorship` deve ser preenchido com a data
   - ADM deve ser capaz de atualizar os campos do _sponsors_
     - As logos devem ser salvas no R2 da cloudflare e somente o path do arquivo estático salvo no banco de dados
-      - Salvar no bucket chamado: `sponsors_logo`
+      - Salvar no bucket chamado: `backoffice/dev/sponsor/logo` e `backoffice/prod/sponsor/logo`
+
 - ADM deve ser capaz de cadastrar benefícios
   - Benefícios podem ser gerais (apenas associação) ou vinculados a um `sponsor`
   - Benefícios vinculados a `sponsor` só devem ser exibidos se o patrocinador estiver ativo
+
 - ADM deve ser capaz de gerir patrocinadores
   - Criar, editar e inativar patrocinadores
   - Visualizar os benefícios associados a cada patrocinador
   - Visualizar o histórico de validações realizadas por um patrocinador (check-ins)
+
 - ADM deve ser capaz de gerir membros
   - Criar, editar e inativar membros
   - Visualizar o status atual da assinatura do membro (ATIVO, ATRASADO, DESATIVADO, PATROCINADO)
   - Visualizar o histórico de check-ins realizados pelo membro
+
 - Fluxo de relacionamento patrocinador ↔ membro
   - Cada vez que um patrocinador validar um membro, deve-se ser criado um registro de log em `sponsors_member_checkin`
+
 - Regras de assinatura (membro assinante)
   - O valor padrão da mensalidade deve ser **R$ 20,00**, permitindo inserção inicial diferente OU alteração posterior pelo ADM
   - O dia de pagamento da mensalidade deve estar entre **1** e **31**
   - A data da próxima cobrança deve ser calculada automaticamente mesmo em meses em que o dia escolhido não exista (por exemplo, dia 31)
+
 - Regras de acesso do usuário
   - O acesso pela área logada só deve ser permitido se `is_account_active = true`
   - Usuários com `is_account_active = false` não devem conseguir realizar login

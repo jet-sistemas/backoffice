@@ -1,7 +1,7 @@
 ---
 name: Histórico de falhas
 description: Falhas conhecidas do projeto e como resolvê-las — consultar antes de sugerir soluções para erros similares
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Histórico de falhas e resoluções
