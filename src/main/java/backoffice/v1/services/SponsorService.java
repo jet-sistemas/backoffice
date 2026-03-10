@@ -8,12 +8,11 @@ import backoffice.common.utils.PasswordUtils;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.sponsor.SponsorCreateDTO;
 import backoffice.v1.dtos.sponsor.SponsorDTO;
-import backoffice.v1.entities.Sponsor;
+import backoffice.v1.dtos.user.UserCreateDTO;
 import backoffice.v1.entities.User;
 import backoffice.v1.entities.enums.SponsorTierEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
 import backoffice.v1.repositories.SponsorRepository;
-import backoffice.v1.repositories.UserRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -24,14 +23,11 @@ public class SponsorService {
   private UserService userService;
 
   @Inject
-  private UserRepository userRepository;
-
-  @Inject
   private SponsorRepository sponsorRepository;
 
   @Transactional
   public SponsorDTO createSponsor(SponsorCreateDTO dto) {
-    SponsorCreateDTO.UserData userData = dto.getUser();
+    UserCreateDTO userData = dto.getUser();
 
     userService.validateUniqueFields(userData.getEmail(), userData.getDocument(), userData.getCode());
 
@@ -39,44 +35,21 @@ public class SponsorService {
       validateUniqueWhatsapp(dto.getWhatsapp());
     }
 
-    User user = User.builder()
-        .email(userData.getEmail())
-        .password(PasswordUtils.hashPass("temp@1234"))
-        .name(userData.getName())
-        .document(userData.getDocument())
-        .code(userData.getCode())
-        .type(UserTypeEnum.SPONSOR)
-        .avatarUrl(userData.getAvatarUrl())
-        .build();
+    userData.setPassword(PasswordUtils.hashPass("temp@1234"));
+    userData.setType(UserTypeEnum.SPONSOR.name());
 
-    userRepository.persistAndFlush(user);
+    User user = userService.create(userData);
 
-    Sponsor sponsor = SponsorMapper.fromDTO(dto, user);
-
+    var sponsor = SponsorMapper.fromDTO(dto, user);
     sponsorRepository.persistAndFlush(sponsor);
 
     return SponsorMapper.fromEntityToSponsorDTO(sponsor);
   }
 
   public Pageable<SponsorDTO> listSponsors(SponsorTierEnum tier, PageDTO pageDTO) {
-    var query = tier != null
-        ? sponsorRepository.find("tier = ?1 and isActive = true", tier)
-        : sponsorRepository.find("isActive = true");
+    var pageable = sponsorRepository.findActiveSponsors(tier, pageDTO);
 
-    var paginatedQuery = query.page(pageDTO.getPagination());
-    var pageable = new Pageable<Sponsor>(paginatedQuery, pageDTO.getOneBasePage());
-
-    var dtos = pageable.getData().stream()
-        .map(SponsorMapper::fromEntityToSponsorDTO)
-        .toList();
-
-    return Pageable.<SponsorDTO>builder()
-        .data(dtos)
-        .totalElements(pageable.getTotalElements())
-        .totalPages(pageable.getTotalPages())
-        .pageSize(pageable.getPageSize())
-        .currentPage(pageable.getCurrentPage())
-        .build();
+    return SponsorMapper.fromEntityToPageableDTO(pageable);
   }
 
   private void validateUniqueWhatsapp(String whatsapp) {

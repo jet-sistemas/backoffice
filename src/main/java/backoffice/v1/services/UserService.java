@@ -4,7 +4,6 @@ import java.util.Optional;
 
 import backoffice.common.exceptions.customs.ConflictException;
 import backoffice.common.mappers.UserMapper;
-import backoffice.common.utils.PasswordUtils;
 import backoffice.v1.dtos.user.UserCreateDTO;
 import backoffice.v1.entities.User;
 import backoffice.v1.repositories.UserRepository;
@@ -39,11 +38,9 @@ public class UserService {
   }
 
   public User create(UserCreateDTO dto) {
-    dto.setPassword(PasswordUtils.hashPass(dto.getPassword()));
-
     User user = UserMapper.fromDTO(dto);
 
-    userRepository.persist(user);
+    userRepository.persistAndFlush(user);
 
     return user;
   }

@@ -326,6 +326,109 @@ Os Repositories implementam `PanacheRepository<Entity>` e encapsulam consultas a
 Services nunca acessam o `EntityManager` diretamente — sempre passam pelo Repository
 correspondente.
 
+### 10. Queries exclusivamente no Repository
+
+Toda montagem de query (filtros, ordenação, sort) e paginação deve viver no Repository.
+O Service chama o Repository passando parâmetros e recebe `Pageable<Entity>`.
+O Service **nunca** monta queries (`find()`, `page()`) diretamente.
+
+```java
+// ✅ CORRETO — Query encapsulada no Repository
+// Repository
+public Pageable<Sponsor> findActiveSponsors(SponsorTierEnum tier, PageDTO pageDTO) {
+    var query = tier != null
+        ? find("tier = ?1 and isActive = true", tier)
+        : find("isActive = true");
+    var paginatedQuery = query.page(pageDTO.getPagination());
+    return new Pageable<>(paginatedQuery, pageDTO.getOneBasePage());
+}
+
+// Service
+public Pageable<SponsorDTO> listSponsors(SponsorTierEnum tier, PageDTO pageDTO) {
+    var pageable = sponsorRepository.findActiveSponsors(tier, pageDTO);
+    return SponsorMapper.fromEntityToPageableDTO(pageable);
+}
+
+// ❌ PROIBIDO — Query montada no Service
+public Pageable<SponsorDTO> listSponsors(SponsorTierEnum tier, PageDTO pageDTO) {
+    var query = sponsorRepository.find("tier = ?1 and isActive = true", tier);
+    // ...
+}
+```
+
+### 11. Conversão de Pageable no Mapper
+
+A transformação de `Pageable<Entity>` para `Pageable<DTO>` deve ser feita via método estático
+no Mapper do domínio (`fromEntityToPageableDTO`). O Service **nunca** monta
+`Pageable.builder()` diretamente.
+
+```java
+// ✅ CORRETO — Conversão no Mapper
+public static Pageable<SponsorDTO> fromEntityToPageableDTO(Pageable<Sponsor> data) {
+    List<SponsorDTO> dtos = data.getData().stream()
+        .map(SponsorMapper::fromEntityToSponsorDTO)
+        .toList();
+
+    return Pageable.<SponsorDTO>builder()
+        .data(dtos)
+        .totalElements(data.getTotalElements())
+        .totalPages(data.getTotalPages())
+        .pageSize(data.getPageSize())
+        .currentPage(data.getCurrentPage())
+        .build();
+}
+
+// ❌ PROIBIDO — Pageable.builder() no Service
+var dtos = pageable.getData().stream().map(...).toList();
+return Pageable.<SponsorDTO>builder().data(dtos)...build();
+```
+
+### 12. Reusar DTOs e Mappers existentes
+
+Nunca criar builders inline de Entity/DTO quando já existir um Mapper ou DTO equivalente.
+Mappers devem expor variantes para cada necessidade de conversão:
+
+- `fromDTO(CreateDTO)` → Entity
+- `fromEntityToDto(Entity)` → DTO completo
+- `fromEntityToMinimal(Entity)` → DTO mínimo
+- `fromEntityToListDTO(List<Entity>)` → lista de DTOs
+- `fromEntityToPageableDTO(Pageable<Entity>)` → Pageable de DTOs
+
+```java
+// ✅ CORRETO — Delegar ao Mapper do domínio
+.user(UserMapper.fromEntityToMinimal(sponsor.getUser()))
+
+// ❌ PROIBIDO — Builder inline quando já existe Mapper
+.user(UserMinDTO.builder()
+    .id(sponsor.getUser().getId())
+    .email(sponsor.getUser().getEmail())
+    .build())
+```
+
+### 13. Inner classes de DTO são proibidas
+
+Todo DTO deve ser uma classe própria dentro do pacote `dtos/{dominio}/`. Inner classes dentro
+de DTOs são consideradas **falha de arquitetura**. Se não existir um DTO reutilizável para o
+caso, deve-se criar um novo DTO no pacote correto. Em caso de dúvida sobre onde alocar o novo
+DTO, o desenvolvedor deve consultar a equipe antes de criar.
+
+```java
+// ✅ CORRETO — DTO em classe própria
+public class SponsorCreateDTO {
+    @Valid @NotNull
+    private UserCreateDTO user;  // DTO existente reutilizado
+}
+
+// ❌ PROIBIDO — Inner class de DTO
+public class SponsorCreateDTO {
+    private UserData user;
+
+    public static class UserData { // Falha de arquitetura
+        private String email;
+    }
+}
+```
+
 ---
 
 ## Fluxo de uma Requisição

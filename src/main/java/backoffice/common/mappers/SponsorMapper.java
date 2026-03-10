@@ -1,8 +1,10 @@
 package backoffice.common.mappers;
 
+import java.util.List;
+
+import backoffice.common.database.Pageable;
 import backoffice.v1.dtos.sponsor.SponsorCreateDTO;
 import backoffice.v1.dtos.sponsor.SponsorDTO;
-import backoffice.v1.dtos.user.UserMinDTO;
 import backoffice.v1.entities.Sponsor;
 import backoffice.v1.entities.User;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
@@ -28,13 +30,7 @@ public class SponsorMapper {
   public static SponsorDTO fromEntityToSponsorDTO(Sponsor sponsor) {
     return SponsorDTO.builder()
         .id(sponsor.getId())
-        .user(UserMinDTO.builder()
-            .id(sponsor.getUser().getId())
-            .email(sponsor.getUser().getEmail())
-            .name(sponsor.getUser().getName())
-            .type(sponsor.getUser().getType())
-            .createdAt(sponsor.getUser().getCreatedAt())
-            .build())
+        .user(UserMapper.fromEntityToMinimal(sponsor.getUser()))
         .publicName(sponsor.getPublicName())
         .tier(sponsor.getTier())
         .entityType(sponsor.getEntityType())
@@ -45,6 +41,26 @@ public class SponsorMapper {
         .whatsapp(sponsor.getWhatsapp())
         .isActive(sponsor.isActive())
         .createdAt(sponsor.getCreatedAt())
+        .build();
+  }
+
+  public static List<SponsorDTO> fromEntityToListDTO(List<Sponsor> sponsors) {
+    return sponsors.stream()
+        .map(SponsorMapper::fromEntityToSponsorDTO)
+        .toList();
+  }
+
+  public static Pageable<SponsorDTO> fromEntityToPageableDTO(Pageable<Sponsor> data) {
+    List<SponsorDTO> dtos = data.getData().stream()
+        .map(SponsorMapper::fromEntityToSponsorDTO)
+        .toList();
+
+    return Pageable.<SponsorDTO>builder()
+        .data(dtos)
+        .totalElements(data.getTotalElements())
+        .totalPages(data.getTotalPages())
+        .pageSize(data.getPageSize())
+        .currentPage(data.getCurrentPage())
         .build();
   }
 }
