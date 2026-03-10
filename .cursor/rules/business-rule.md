@@ -72,6 +72,8 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
 - ADM deve ser capaz de criar um novo usuário (table_name `users`)
   - Durante o cadastro, deve-se salvar as informações relativas aos `members` ou `sponsors` dependendo do `users.type`
   - Se `sponsors.entity_type = PERSON`, o campo `sponsors.persona` é obrigatório; para os demais tipos de entidade (`COMPANY`, `GOVERNMENT`, `NGO`), este campo é opcional
+    - **Banco de dados**: A coluna `sponsors.persona` permite valores `NULL` para suportar esta regra
+    - **Validação**: Implementada na camada de service (`SponsorService.validatePersonaByEntityType`)
   - O campo/código de identificação gerado para o usuário deve ser único
   - Se `user.type` = `SPONSOR_MEMBER`
     - Informações sobre `sponsor` e `member` são obrigatórias durante o cadastro 

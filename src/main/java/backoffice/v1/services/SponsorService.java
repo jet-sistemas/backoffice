@@ -3,6 +3,7 @@ package backoffice.v1.services;
 import backoffice.common.database.Pageable;
 import backoffice.common.exceptions.MessageErrorEnum;
 import backoffice.common.exceptions.customs.ConflictException;
+import backoffice.common.exceptions.customs.BusinessException;
 import backoffice.common.mappers.SponsorMapper;
 import backoffice.common.utils.PasswordUtils;
 import backoffice.v1.dtos.common.PageDTO;
@@ -10,6 +11,7 @@ import backoffice.v1.dtos.sponsor.SponsorCreateDTO;
 import backoffice.v1.dtos.sponsor.SponsorDTO;
 import backoffice.v1.dtos.user.UserCreateDTO;
 import backoffice.v1.entities.User;
+import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
 import backoffice.v1.repositories.SponsorRepository;
@@ -35,6 +37,8 @@ public class SponsorService {
       validateUniqueWhatsapp(dto.getWhatsapp());
     }
 
+    validatePersonaByEntityType(dto);
+
     userData.setPassword(PasswordUtils.hashPass("temp@1234"));
     userData.setType(UserTypeEnum.SPONSOR.name());
 
@@ -56,5 +60,15 @@ public class SponsorService {
     sponsorRepository.findByWhatsapp(whatsapp).ifPresent(s -> {
       throw new ConflictException(MessageErrorEnum.SPONSOR_ALREADY_EXISTS.getMessage());
     });
+  }
+
+  private void validatePersonaByEntityType(SponsorCreateDTO dto) {
+    SponsorEntityTypeEnum entityType = SponsorEntityTypeEnum.valueOf(dto.getEntityType());
+    String persona = dto.getPersona();
+
+    if (SponsorEntityTypeEnum.PERSON.equals(entityType)
+        && (persona == null || persona.isBlank())) {
+      throw new BusinessException(MessageErrorEnum.SPONSOR_PERSONA_REQUIRED_FOR_PERSON.getMessage(), 400);
+    }
   }
 }

@@ -40,7 +40,7 @@ public class Sponsor extends BaseEntity {
   private SponsorEntityTypeEnum entityType;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @Column(nullable = true)
   private SponsorPersonaEnum persona;
 
   private String logoUrl;

@@ -35,7 +35,6 @@ public class SponsorCreateDTO {
   @EnumConstraint(enumClass = SponsorEntityTypeEnum.class, message = "Tipo de entidade inválido. Valores aceitos: PERSON, COMPANY, GOVERNMENT, NGO")
   private String entityType;
 
-  @NotBlank(message = "A persona é obrigatória")
   @EnumConstraint(enumClass = SponsorPersonaEnum.class, message = "Persona inválida. Valores aceitos: POLITICIAN, INFLUENCER, ATHLETE, OTHER")
   private String persona;
 

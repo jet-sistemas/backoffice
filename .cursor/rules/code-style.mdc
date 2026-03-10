@@ -138,6 +138,9 @@ Validadores customizados para Bean Validation:
 
 - `EnumConstraint` — anotação customizada para validar enums
 - `EnumValidator` — implementação do validador de enums
+  - **Comportamento**: aceita valores `null` ou em branco como válidos (retorna `true`)
+  - A obrigatoriedade do campo deve ser controlada por `@NotNull` ou `@NotBlank`
+  - Quando o valor está presente, valida se corresponde a uma das constantes do enum (case-insensitive)
 
 ---
 
