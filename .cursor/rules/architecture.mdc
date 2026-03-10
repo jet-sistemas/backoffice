@@ -86,3 +86,10 @@ Você é um especialista em programação Java, Quarkus, Jakarta EE e tecnologia
 
 - Siga boas práticas de design de API REST (uso adequado de métodos HTTP e status codes).
 - Adote os princípios SOLID para garantir alta coesão e baixo acoplamento.
+
+## Conduta do Agente (IA)
+
+- **NUNCA** crie arquivos `.md` explicativos, de instrução ou narrativos sobre o que está sendo implementado (ex.: `MIGRATION_REQUIRED.md`, `CHANGELOG.md`, `README` de migration, etc.). Documentação só deve ser criada quando **explicitamente solicitada** pelo usuário.
+- **NUNCA** crie arquivos de qualquer tipo que sirvam apenas para explicar ao usuário o que foi feito. A comunicação deve acontecer exclusivamente via texto de resposta.
+- **Seja resoluto**: respostas curtas e diretas. Evite recapitulações, listas de "o que foi feito" e resumos extensos. Informe apenas o essencial — o que mudou e, se necessário, alguma ação pendente do usuário.
+- **Economia de tokens**: não repita código que acabou de ser editado, não liste arquivos alterados quando a mudança for trivial, e não forneça explicações não solicitadas.
