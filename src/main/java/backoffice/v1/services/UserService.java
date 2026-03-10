@@ -37,6 +37,16 @@ public class UserService {
     }
   }
 
+  public void validateUniqueFieldsForUpdate(Long userId, String email, String document) {
+    if (email != null && userRepository.existsByEmailAndIdNot(email, userId)) {
+      throw new ConflictException("Já existe um usuário com o e-mail informado.");
+    }
+
+    if (document != null && userRepository.existsByDocumentAndIdNot(document, userId)) {
+      throw new ConflictException("Já existe um usuário com o documento informado.");
+    }
+  }
+
   public User create(UserCreateDTO dto) {
     User user = UserMapper.fromDTO(dto);
 

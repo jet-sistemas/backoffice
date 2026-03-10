@@ -106,7 +106,7 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
   - Ao desativar um _sponsor_, o campo `last_active_sponsorship` deve ser preenchido com a data
   - ADM deve ser capaz de atualizar os campos do _sponsors_
     - As logos devem ser salvas no R2 da cloudflare e somente o path do arquivo estático salvo no banco de dados
-      - Salvar no bucket chamado: `backoffice/dev/sponsor/logo` e `backoffice/prod/sponsor/logo`
+      - Salvar no bucket chamado: `backoffice/dev/sponsors/logo` e `backoffice/prod/sponsors/logo`
 
 - ADM deve ser capaz de cadastrar benefícios
   - Benefícios podem ser gerais (apenas associação) ou vinculados a um `sponsor`

@@ -5,6 +5,7 @@ import backoffice.common.requests.ResponseModel;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.sponsor.SponsorCreateDTO;
 import backoffice.v1.dtos.sponsor.SponsorDTO;
+import backoffice.v1.dtos.sponsor.SponsorUpdateDTO;
 import backoffice.v1.entities.enums.SponsorTierEnum;
 import backoffice.v1.services.AdminService;
 import jakarta.annotation.security.RolesAllowed;
@@ -13,7 +14,9 @@ import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
@@ -36,6 +39,16 @@ public class AdminResource {
     var response = ResponseModel.success(Status.CREATED.getStatusCode(), result);
 
     return Response.status(Status.CREATED).entity(response).build();
+  }
+
+  @PUT
+  @Path("/sponsor/{userId}")
+  public Response updateSponsor(@PathParam("userId") Long userId, @Valid SponsorUpdateDTO dto) {
+    var result = service.updateSponsor(userId, dto);
+
+    var response = ResponseModel.success(Status.OK.getStatusCode(), result);
+
+    return Response.ok(response).build();
   }
 
   @GET

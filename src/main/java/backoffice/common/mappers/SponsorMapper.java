@@ -1,10 +1,12 @@
 package backoffice.common.mappers;
 
+import java.time.Instant;
 import java.util.List;
 
 import backoffice.common.database.Pageable;
 import backoffice.v1.dtos.sponsor.SponsorCreateDTO;
 import backoffice.v1.dtos.sponsor.SponsorDTO;
+import backoffice.v1.dtos.sponsor.SponsorUpdateDTO;
 import backoffice.v1.entities.Sponsor;
 import backoffice.v1.entities.User;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
@@ -42,8 +44,36 @@ public class SponsorMapper {
         .instagram(sponsor.getInstagram())
         .whatsapp(sponsor.getWhatsapp())
         .isActive(sponsor.isActive())
+        .lastActiveSponsorship(sponsor.getLastActiveSponsorship())
         .createdAt(sponsor.getCreatedAt())
         .build();
+  }
+
+  public static void applyUpdate(SponsorUpdateDTO dto, Sponsor sponsor, User user) {
+    if (dto.getName() != null) user.setName(dto.getName());
+    if (dto.getEmail() != null) user.setEmail(dto.getEmail());
+    if (dto.getDocument() != null) user.setDocument(dto.getDocument());
+    if (dto.getAvatarUrl() != null) user.setAvatarUrl(dto.getAvatarUrl());
+
+    if (dto.getPublicName() != null) sponsor.setPublicName(dto.getPublicName());
+    if (dto.getTier() != null) sponsor.setTier(SponsorTierEnum.valueOf(dto.getTier().toUpperCase()));
+    if (dto.getEntityType() != null) sponsor.setEntityType(SponsorEntityTypeEnum.valueOf(dto.getEntityType().toUpperCase()));
+    if (dto.getPersona() != null) {
+      sponsor.setPersona(dto.getPersona().isBlank() ? null : SponsorPersonaEnum.valueOf(dto.getPersona().toUpperCase()));
+    }
+    if (dto.getLogoUrl() != null) sponsor.setLogoUrl(dto.getLogoUrl());
+    if (dto.getSite() != null) sponsor.setSite(dto.getSite());
+    if (dto.getInstagram() != null) sponsor.setInstagram(dto.getInstagram());
+    if (dto.getWhatsapp() != null) sponsor.setWhatsapp(dto.getWhatsapp());
+
+    if (dto.getIsActive() != null) {
+      boolean wasActive = sponsor.isActive();
+      sponsor.setActive(dto.getIsActive());
+
+      if (wasActive && !dto.getIsActive()) {
+        sponsor.setLastActiveSponsorship(Instant.now());
+      }
+    }
   }
 
   public static List<SponsorDTO> fromEntityToListDTO(List<Sponsor> sponsors) {

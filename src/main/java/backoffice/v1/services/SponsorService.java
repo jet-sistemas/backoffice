@@ -2,14 +2,17 @@ package backoffice.v1.services;
 
 import backoffice.common.database.Pageable;
 import backoffice.common.exceptions.MessageErrorEnum;
-import backoffice.common.exceptions.customs.ConflictException;
 import backoffice.common.exceptions.customs.BusinessException;
+import backoffice.common.exceptions.customs.ConflictException;
+import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.mappers.SponsorMapper;
 import backoffice.common.utils.PasswordUtils;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.sponsor.SponsorCreateDTO;
 import backoffice.v1.dtos.sponsor.SponsorDTO;
+import backoffice.v1.dtos.sponsor.SponsorUpdateDTO;
 import backoffice.v1.dtos.user.UserCreateDTO;
+import backoffice.v1.entities.Sponsor;
 import backoffice.v1.entities.User;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
@@ -50,6 +53,33 @@ public class SponsorService {
     return SponsorMapper.fromEntityToSponsorDTO(sponsor);
   }
 
+  @Transactional
+  public SponsorDTO updateSponsor(Long userId, SponsorUpdateDTO dto) {
+    User user = userService.findById(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
+
+    if (!UserTypeEnum.SPONSOR.equals(user.getType()) && !UserTypeEnum.SPONSOR_MEMBER.equals(user.getType())) {
+      throw new BusinessException(MessageErrorEnum.SPONSOR_NOT_FOUND.getMessage(), 400);
+    }
+
+    Sponsor sponsor = sponsorRepository.findByUserId(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.SPONSOR_NOT_FOUND.getMessage()));
+
+    userService.validateUniqueFieldsForUpdate(userId, dto.getEmail(), dto.getDocument());
+
+    if (dto.getWhatsapp() != null && !dto.getWhatsapp().isBlank()) {
+      validateUniqueWhatsappForUpdate(dto.getWhatsapp(), sponsor.getId());
+    }
+
+    validatePersonaByEntityTypeForUpdate(dto, sponsor);
+
+    SponsorMapper.applyUpdate(dto, sponsor, user);
+
+    sponsorRepository.persistAndFlush(sponsor);
+
+    return SponsorMapper.fromEntityToSponsorDTO(sponsor);
+  }
+
   public Pageable<SponsorDTO> listSponsors(SponsorTierEnum tier, PageDTO pageDTO) {
     var pageable = sponsorRepository.findActiveSponsors(tier, pageDTO);
 
@@ -62,12 +92,31 @@ public class SponsorService {
     });
   }
 
+  private void validateUniqueWhatsappForUpdate(String whatsapp, Long sponsorId) {
+    if (sponsorRepository.existsByWhatsappAndIdNot(whatsapp, sponsorId)) {
+      throw new ConflictException(MessageErrorEnum.SPONSOR_ALREADY_EXISTS.getMessage());
+    }
+  }
+
   private void validatePersonaByEntityType(SponsorCreateDTO dto) {
     SponsorEntityTypeEnum entityType = SponsorEntityTypeEnum.valueOf(dto.getEntityType());
     String persona = dto.getPersona();
 
     if (SponsorEntityTypeEnum.PERSON.equals(entityType)
         && (persona == null || persona.isBlank())) {
+      throw new BusinessException(MessageErrorEnum.SPONSOR_PERSONA_REQUIRED_FOR_PERSON.getMessage(), 400);
+    }
+  }
+
+  private void validatePersonaByEntityTypeForUpdate(SponsorUpdateDTO dto, Sponsor sponsor) {
+    SponsorEntityTypeEnum effectiveEntityType = dto.getEntityType() != null
+        ? SponsorEntityTypeEnum.valueOf(dto.getEntityType().toUpperCase())
+        : sponsor.getEntityType();
+
+    String effectivePersona = dto.getPersona() != null ? dto.getPersona() : (sponsor.getPersona() != null ? sponsor.getPersona().name() : null);
+
+    if (SponsorEntityTypeEnum.PERSON.equals(effectiveEntityType)
+        && (effectivePersona == null || effectivePersona.isBlank())) {
       throw new BusinessException(MessageErrorEnum.SPONSOR_PERSONA_REQUIRED_FOR_PERSON.getMessage(), 400);
     }
   }

@@ -27,5 +27,6 @@ public class SponsorDTO {
   private String instagram;
   private String whatsapp;
   private boolean isActive;
+  private Instant lastActiveSponsorship;
   private Instant createdAt;
 }

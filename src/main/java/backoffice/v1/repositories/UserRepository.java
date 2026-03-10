@@ -23,4 +23,12 @@ public class UserRepository implements PanacheRepositoryBase<User, Long> {
   public boolean existsByCode(String code) {
     return count("code = ?1", code) > 0;
   }
+
+  public boolean existsByEmailAndIdNot(String email, Long id) {
+    return count("email = ?1 and id != ?2", email, id) > 0;
+  }
+
+  public boolean existsByDocumentAndIdNot(String document, Long id) {
+    return count("document = ?1 and id != ?2", document, id) > 0;
+  }
 }
