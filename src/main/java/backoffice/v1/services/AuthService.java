@@ -4,6 +4,7 @@ import java.util.logging.Logger;
 
 import backoffice.common.exceptions.MessageErrorEnum;
 import backoffice.common.exceptions.customs.BadRequestException;
+import backoffice.common.exceptions.customs.ForbiddenException;
 import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.mappers.AuthMapper;
 import backoffice.common.utils.PasswordUtils;
@@ -25,6 +26,10 @@ public class AuthService {
     User user = userService.findByEmail(dto.getEmail())
         .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
 
+    if (!user.isAccountActive()) {
+      throw new ForbiddenException(MessageErrorEnum.ACCOUNT_INVALID_TO_ACTION.getMessage());
+    }
+        
     if (PasswordUtils.checkPass(user.getPassword(), dto.getPassword())) {
       throw new BadRequestException(MessageErrorEnum.USER_PASS_NOT_MATCH.getMessage());
     }
