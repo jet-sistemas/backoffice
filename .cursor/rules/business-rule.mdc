@@ -57,6 +57,10 @@ Entusiastas e atletas que desejam fazer parte da associação. Eles terão acess
 - Benefícios Exclusivos: Descontos e vantagens em parceiros comerciais da associação.
 - Comunidade Ativa: Faça parte de uma comunidade apaixonada por esportes no sul do Piauí.
 
+#### Patrocinador Associado
+
+É um tipo de patrocinador que também possui direitos de associados (membro). Pode usufruir dos benefícios como qualquer outro membro.
+
 #### Adm's
 
 São os administradores da plataforma. Eles terão acesso ao backoffice e gerenciarão a plataforma como um todo.
@@ -132,7 +136,7 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
     - `ADM` → apenas acesso de administração (pode não ter `Sponsor`/`Member` vinculado).
     - `SPONSOR` → deve existir um registro em `sponsors` vinculado ao mesmo `User`.
     - `MEMBER` → deve existir um registro em `members` vinculado ao mesmo `User`.
-    - `SPONSOR_MEMBER` → **ATENÇÃO – POSSÍVEL CONFLITO**: o DER prevê essa possibilidade, mas as regras de negócio ainda não definem se haverá sempre dois registros (`Sponsor` + `Member`) compartilhando o mesmo `User` ou outra modelagem; essa decisão deve ser explicitada antes de implementar.
+    - `SPONSOR_MEMBER` → Deve existir registros em `sponsors` e `members` vinculado ao mesmo `User`.
 
 - **Members, tipos e vínculos**
   - `Member.type = SUBSCRIBER`:
