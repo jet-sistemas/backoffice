@@ -111,12 +111,33 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
 
 - ADM deve ser capaz de listar usuários via `GET /v1/admin/user`
   - Retorna todos os usuários com dados de sponsor como objeto filho quando aplicável
-  - Filtros disponíveis via query params: `type` (UserTypeEnum) e `tier` (SponsorTierEnum)
+  - Filtros disponíveis via query params: `type` (UserTypeEnum), `tier` (SponsorTierEnum) e `isActive` (Boolean)
+    - `isActive=true`: retorna apenas usuários com `isAccountActive = true`
+    - `isActive=false`: retorna apenas usuários com `isAccountActive = false`
+    - Sem o parâmetro: retorna todos os usuários
   - Paginação via `page` e `size`
   - Ao desativar um _sponsor_, os benefícios relacionados a ele devem ser omitidos
   - Ao desativar um _sponsor_, o campo `last_active_sponsorship` deve ser preenchido com a data
   - As logos devem ser salvas no R2 da cloudflare e somente o path do arquivo estático salvo no banco de dados
     - Salvar no bucket chamado: `backoffice/dev/sponsors/logo` e `backoffice/prod/sponsors/logo`
+
+- ADM deve ser capaz de desativar (soft delete) um usuário via `PATCH /v1/admin/user/{id}/deactivate`
+  - A desativação é **lógica** — o registro permanece no banco
+  - `user.isAccountActive` é definido como `false`
+  - Se o usuário for `SPONSOR` ou `SPONSOR_MEMBER`:
+    - `sponsor.isActive` é definido como `false`
+    - `sponsor.lastActiveSponsorship` é preenchido com a data/hora da desativação
+    - Todos os `benefits` vinculados ao sponsor são desativados (`benefits.isActive = false`)
+  - Usuários desativados não conseguem realizar login (`isAccountActive = false`)
+
+- ADM deve ser capaz de excluir (hard delete) um usuário via `DELETE /v1/admin/user/{id}`
+  - A exclusão é **física** — o registro é removido permanentemente do banco
+  - Efeito em cascata:
+    - Se o usuário for `SPONSOR` ou `SPONSOR_MEMBER`:
+      - Todos os `benefits` vinculados ao sponsor são excluídos
+      - O registro `sponsor` é excluído
+    - O registro `user` é excluído
+  - **Atenção**: Esta operação é irreversível
 
 - **Formato de resposta**: o retorno sempre parte do User com objeto filho `sponsor` (quando aplicável)
   - Exemplo: `{ id, email, name, document, code, type, sponsor: { id, publicName, tier, ... } }`

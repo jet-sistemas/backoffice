@@ -80,8 +80,33 @@ public class AdminService {
     return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor);
   }
 
-  public Pageable<UserWithSponsorDTO> listUsers(UserTypeEnum type, SponsorTierEnum tier, PageDTO pageDTO) {
-    Pageable<User> pageable = userRepository.findAllPaginated(type, tier, pageDTO);
+  @Transactional
+  public void deactivateUser(Long userId) {
+    User user = userService.findById(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
+
+    user.setAccountActive(false);
+    userRepository.persistAndFlush(user);
+
+    if (isSponsorType(user.getType())) {
+      sponsorService.deactivateByUserId(userId);
+    }
+  }
+
+  @Transactional
+  public void deleteUser(Long userId) {
+    User user = userService.findById(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
+
+    if (isSponsorType(user.getType())) {
+      sponsorService.deleteByUserId(userId);
+    }
+
+    userRepository.delete(user);
+  }
+
+  public Pageable<UserWithSponsorDTO> listUsers(UserTypeEnum type, SponsorTierEnum tier, Boolean isActive, PageDTO pageDTO) {
+    Pageable<User> pageable = userRepository.findAllPaginated(type, tier, isActive, pageDTO);
 
     List<Long> userIds = pageable.getData().stream()
         .filter(u -> isSponsorType(u.getType()))

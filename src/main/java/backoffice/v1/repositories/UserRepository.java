@@ -41,7 +41,7 @@ public class UserRepository implements PanacheRepositoryBase<User, Long> {
     return count("document = ?1 and id != ?2", document, id) > 0;
   }
 
-  public Pageable<User> findAllPaginated(UserTypeEnum type, SponsorTierEnum tier, PageDTO pageDTO) {
+  public Pageable<User> findAllPaginated(UserTypeEnum type, SponsorTierEnum tier, Boolean isActive, PageDTO pageDTO) {
     var sb = new StringBuilder();
     Map<String, Object> params = new HashMap<>();
     List<String> conditions = new ArrayList<>();
@@ -54,6 +54,11 @@ public class UserRepository implements PanacheRepositoryBase<User, Long> {
     if (tier != null) {
       conditions.add("exists (select 1 from Sponsor s where s.user = u and s.tier = :tier)");
       params.put("tier", tier);
+    }
+
+    if (isActive != null) {
+      conditions.add("u.isAccountActive = :isActive");
+      params.put("isActive", isActive);
     }
 
     if (conditions.isEmpty()) {

@@ -13,7 +13,9 @@ import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -48,14 +50,31 @@ public class AdminResource {
     return Response.ok(response).build();
   }
 
+  @PATCH
+  @Path("/user/{id}/deactivate")
+  public Response deactivateUser(@PathParam("id") Long id) {
+    service.deactivateUser(id);
+    var response = ResponseModel.success(Status.OK.getStatusCode());
+    return Response.ok(response).build();
+  }
+
+  @DELETE
+  @Path("/user/{id}")
+  public Response deleteUser(@PathParam("id") Long id) {
+    service.deleteUser(id);
+    var response = ResponseModel.success(Status.OK.getStatusCode());
+    return Response.ok(response).build();
+  }
+
   @GET
   @Path("/user")
   public Response listUsers(
       @QueryParam("type") UserTypeEnum type,
       @QueryParam("tier") SponsorTierEnum tier,
+      @QueryParam("isActive") Boolean isActive,
       @QueryParam("page") Integer page,
       @QueryParam("size") Integer size) {
-    Pageable<UserWithSponsorDTO> result = service.listUsers(type, tier, PageDTO.of(page, size));
+    Pageable<UserWithSponsorDTO> result = service.listUsers(type, tier, isActive, PageDTO.of(page, size));
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
     return Response.ok(response).build();
   }

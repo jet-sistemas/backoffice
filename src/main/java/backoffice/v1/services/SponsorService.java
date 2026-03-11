@@ -1,5 +1,6 @@
 package backoffice.v1.services;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -14,6 +15,7 @@ import backoffice.v1.dtos.sponsor.SponsorDataUpdateDTO;
 import backoffice.v1.entities.Sponsor;
 import backoffice.v1.entities.User;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
+import backoffice.v1.repositories.BenefitRepository;
 import backoffice.v1.repositories.SponsorRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -22,6 +24,9 @@ import jakarta.inject.Inject;
 public class SponsorService {
   @Inject
   private SponsorRepository sponsorRepository;
+
+  @Inject
+  private BenefitRepository benefitRepository;
 
   public Sponsor create(SponsorDataCreateDTO dto, User user) {
     if (dto.getWhatsapp() != null && !dto.getWhatsapp().isBlank()) {
@@ -61,6 +66,23 @@ public class SponsorService {
         .list()
         .stream()
         .collect(Collectors.toMap(s -> s.getUser().getId(), s -> s));
+  }
+
+  public void deactivateByUserId(Long userId) {
+    findByUserId(userId).ifPresent(sponsor -> {
+      sponsor.setActive(false);
+      sponsor.setLastActiveSponsorship(Instant.now());
+      sponsorRepository.persistAndFlush(sponsor);
+
+      benefitRepository.deactivateBySponsorId(sponsor.getId());
+    });
+  }
+
+  public void deleteByUserId(Long userId) {
+    findByUserId(userId).ifPresent(sponsor -> {
+      benefitRepository.deleteBySponsorId(sponsor.getId());
+      sponsorRepository.delete(sponsor);
+    });
   }
 
   public void validateUniqueWhatsapp(String whatsapp) {
