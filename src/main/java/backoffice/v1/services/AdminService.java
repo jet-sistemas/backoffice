@@ -10,6 +10,9 @@ import backoffice.common.exceptions.customs.BusinessException;
 import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.mappers.UserMapper;
 import backoffice.common.utils.PasswordUtils;
+import backoffice.v1.dtos.benefit.BenefitCreateDTO;
+import backoffice.v1.dtos.benefit.BenefitDTO;
+import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.user.UserCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
@@ -31,6 +34,9 @@ public class AdminService {
 
   @Inject
   private SponsorService sponsorService;
+
+  @Inject
+  private BenefitService benefitService;
 
   @Inject
   private UserRepository userRepository;
@@ -148,5 +154,31 @@ public class AdminService {
 
   private boolean isSponsorType(UserTypeEnum type) {
     return UserTypeEnum.SPONSOR.equals(type) || UserTypeEnum.SPONSOR_MEMBER.equals(type);
+  }
+
+  // --- Benefit ---
+
+  public BenefitDTO createBenefit(BenefitCreateDTO dto) {
+    return benefitService.create(dto);
+  }
+
+  public BenefitDTO updateBenefit(Long benefitId, BenefitUpdateDTO dto) {
+    return benefitService.update(benefitId, dto);
+  }
+
+  public BenefitDTO findBenefitById(Long benefitId) {
+    return benefitService.findById(benefitId);
+  }
+
+  public Pageable<BenefitDTO> listBenefits(Long sponsorId, Boolean isActive, PageDTO pageDTO) {
+    return benefitService.list(sponsorId, isActive, pageDTO);
+  }
+
+  public void deactivateBenefit(Long benefitId) {
+    benefitService.deactivate(benefitId);
+  }
+
+  public void deleteBenefit(Long benefitId) {
+    benefitService.delete(benefitId);
   }
 }

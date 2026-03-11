@@ -142,9 +142,22 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
 - **Formato de resposta**: o retorno sempre parte do User com objeto filho `sponsor` (quando aplicável)
   - Exemplo: `{ id, email, name, document, code, type, sponsor: { id, publicName, tier, ... } }`
 
-- ADM deve ser capaz de cadastrar benefícios
+- ADM deve ser capaz de gerenciar benefícios (CRUD completo via `/v1/admin/benefit`)
   - Benefícios podem ser gerais (apenas associação) ou vinculados a um `sponsor`
   - Benefícios vinculados a `sponsor` só devem ser exibidos se o patrocinador estiver ativo
+  - `POST /v1/admin/benefit` — Criar benefício
+    - Payload: `BenefitCreateDTO` (`name` obrigatório, `description`, `address`, `sponsorId` opcional)
+    - Se `sponsorId` informado, valida se o sponsor existe; caso contrário retorna 404
+    - Retorna `BenefitDTO` com `SponsorMinDTO` embutido quando vinculado
+  - `PUT /v1/admin/benefit/{id}` — Atualizar benefício
+    - Payload: `BenefitUpdateDTO` (todos os campos opcionais — update parcial)
+    - `sponsorId` permite vincular/desvincular sponsor; se informado, valida existência
+  - `GET /v1/admin/benefit/{id}` — Buscar benefício por ID
+  - `GET /v1/admin/benefit` — Listar benefícios com paginação
+    - Filtros: `sponsorId` (Long), `isActive` (Boolean)
+    - Paginação: `page`, `size`
+  - `PATCH /v1/admin/benefit/{id}/deactivate` — Desativar benefício (soft delete, `isActive = false`)
+  - `DELETE /v1/admin/benefit/{id}` — Excluir benefício (hard delete, irreversível)
 
 - ADM deve ser capaz de gerir patrocinadores
   - Criar, editar e inativar patrocinadores

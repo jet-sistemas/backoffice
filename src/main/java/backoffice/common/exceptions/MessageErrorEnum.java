@@ -23,7 +23,9 @@ public enum MessageErrorEnum {
   SPONSOR_PERSONA_REQUIRED_FOR_PERSON(
       "Persona é obrigatória quando o tipo de entidade é PERSON. Valores aceitos: POLITICIAN, INFLUENCER, ATHLETE, OTHER"),
   SPONSOR_DATA_REQUIRED("Dados do patrocinador são obrigatórios para usuários do tipo SPONSOR."),
-  USER_TYPE_NOT_IMPLEMENTED("Tipo de usuário ainda não implementado.");
+  USER_TYPE_NOT_IMPLEMENTED("Tipo de usuário ainda não implementado."),
+
+  BENEFIT_NOT_FOUND("Benefício não encontrado.");
 
   public String message;
 

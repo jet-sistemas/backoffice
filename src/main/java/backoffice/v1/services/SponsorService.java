@@ -54,6 +54,10 @@ public class SponsorService {
     return sponsor;
   }
 
+  public Optional<Sponsor> findById(Long sponsorId) {
+    return sponsorRepository.findByIdOptional(sponsorId);
+  }
+
   public Optional<Sponsor> findByUserId(Long userId) {
     return sponsorRepository.findByUserId(userId);
   }
