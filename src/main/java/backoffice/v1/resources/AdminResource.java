@@ -1,5 +1,9 @@
 package backoffice.v1.resources;
 
+import org.eclipse.microprofile.openapi.annotations.Operation;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
+import org.eclipse.microprofile.openapi.annotations.tags.Tag;
+
 import backoffice.common.database.Pageable;
 import backoffice.common.requests.ResponseModel;
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
@@ -37,8 +41,12 @@ public class AdminResource {
   @Inject
   private AdminService service;
 
+  // ===================== User =====================
+
   @POST
   @Path("/user")
+  @Tag(name = "Admin - Usuários")
+  @Operation(summary = "Criar usuário", description = "Cria um novo usuário com dados opcionais de patrocinador. Tipo MEMBER e SPONSOR_MEMBER ainda não implementados.")
   public Response createUser(@Valid UserWithSponsorCreateDTO dto) {
     var result = service.createUser(dto);
     var response = ResponseModel.success(Status.CREATED.getStatusCode(), result);
@@ -47,6 +55,8 @@ public class AdminResource {
 
   @PUT
   @Path("/user/{id}")
+  @Tag(name = "Admin - Usuários")
+  @Operation(summary = "Atualizar usuário", description = "Atualização parcial do usuário e do patrocinador vinculado, quando aplicável.")
   public Response updateUser(@PathParam("id") Long id, @Valid UserWithSponsorUpdateDTO dto) {
     var result = service.updateUser(id, dto);
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
@@ -55,6 +65,8 @@ public class AdminResource {
 
   @PATCH
   @Path("/user/{id}/deactivate")
+  @Tag(name = "Admin - Usuários")
+  @Operation(summary = "Desativar usuário", description = "Desativação lógica. Se SPONSOR, desativa também o patrocinador e seus benefícios.")
   public Response deactivateUser(@PathParam("id") Long id) {
     service.deactivateUser(id);
     var response = ResponseModel.success(Status.OK.getStatusCode());
@@ -63,6 +75,8 @@ public class AdminResource {
 
   @DELETE
   @Path("/user/{id}")
+  @Tag(name = "Admin - Usuários")
+  @Operation(summary = "Excluir usuário", description = "Exclusão física e irreversível. Remove em cascata sponsor e benefícios vinculados.")
   public Response deleteUser(@PathParam("id") Long id) {
     service.deleteUser(id);
     var response = ResponseModel.success(Status.OK.getStatusCode());
@@ -71,6 +85,8 @@ public class AdminResource {
 
   @GET
   @Path("/user/{id}")
+  @Tag(name = "Admin - Usuários")
+  @Operation(summary = "Buscar usuário por ID", description = "Retorna o usuário com dados de patrocinador embutidos quando aplicável.")
   public Response findUserById(@PathParam("id") Long id) {
     var result = service.findUserById(id);
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
@@ -79,21 +95,25 @@ public class AdminResource {
 
   @GET
   @Path("/user")
+  @Tag(name = "Admin - Usuários")
+  @Operation(summary = "Listar usuários", description = "Listagem paginada com filtros por tipo, tier e status de ativação.")
   public Response listUsers(
-      @QueryParam("type") UserTypeEnum type,
-      @QueryParam("tier") SponsorTierEnum tier,
-      @QueryParam("isActive") Boolean isActive,
-      @QueryParam("page") Integer page,
-      @QueryParam("size") Integer size) {
+      @Parameter(description = "Tipo do usuário") @QueryParam("type") UserTypeEnum type,
+      @Parameter(description = "Tier do patrocinador") @QueryParam("tier") SponsorTierEnum tier,
+      @Parameter(description = "Filtrar por conta ativa/inativa") @QueryParam("isActive") Boolean isActive,
+      @Parameter(description = "Número da página (0-based)") @QueryParam("page") Integer page,
+      @Parameter(description = "Itens por página") @QueryParam("size") Integer size) {
     Pageable<UserWithSponsorDTO> result = service.listUsers(type, tier, isActive, PageDTO.of(page, size));
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
     return Response.ok(response).build();
   }
 
-  // --- Benefit ---
+  // ===================== Benefit =====================
 
   @POST
   @Path("/benefit")
+  @Tag(name = "Admin - Benefícios")
+  @Operation(summary = "Criar benefício", description = "Cria um benefício geral ou vinculado a um patrocinador. Se sponsorId informado, valida existência.")
   public Response createBenefit(@Valid BenefitCreateDTO dto) {
     var result = service.createBenefit(dto);
     var response = ResponseModel.success(Status.CREATED.getStatusCode(), result);
@@ -102,6 +122,8 @@ public class AdminResource {
 
   @PUT
   @Path("/benefit/{id}")
+  @Tag(name = "Admin - Benefícios")
+  @Operation(summary = "Atualizar benefício", description = "Atualização parcial. Permite vincular/desvincular patrocinador via sponsorId.")
   public Response updateBenefit(@PathParam("id") Long id, @Valid BenefitUpdateDTO dto) {
     var result = service.updateBenefit(id, dto);
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
@@ -110,6 +132,8 @@ public class AdminResource {
 
   @GET
   @Path("/benefit/{id}")
+  @Tag(name = "Admin - Benefícios")
+  @Operation(summary = "Buscar benefício por ID", description = "Retorna o benefício com dados mínimos do patrocinador quando vinculado.")
   public Response findBenefitById(@PathParam("id") Long id) {
     var result = service.findBenefitById(id);
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
@@ -118,11 +142,13 @@ public class AdminResource {
 
   @GET
   @Path("/benefit")
+  @Tag(name = "Admin - Benefícios")
+  @Operation(summary = "Listar benefícios", description = "Listagem paginada com filtros por patrocinador e status de ativação.")
   public Response listBenefits(
-      @QueryParam("sponsorId") Long sponsorId,
-      @QueryParam("isActive") Boolean isActive,
-      @QueryParam("page") Integer page,
-      @QueryParam("size") Integer size) {
+      @Parameter(description = "ID do patrocinador") @QueryParam("sponsorId") Long sponsorId,
+      @Parameter(description = "Filtrar por benefício ativo/inativo") @QueryParam("isActive") Boolean isActive,
+      @Parameter(description = "Número da página (0-based)") @QueryParam("page") Integer page,
+      @Parameter(description = "Itens por página") @QueryParam("size") Integer size) {
     Pageable<BenefitDTO> result = service.listBenefits(sponsorId, isActive, PageDTO.of(page, size));
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
     return Response.ok(response).build();
@@ -130,6 +156,8 @@ public class AdminResource {
 
   @PATCH
   @Path("/benefit/{id}/deactivate")
+  @Tag(name = "Admin - Benefícios")
+  @Operation(summary = "Desativar benefício", description = "Desativação lógica (soft delete). Define isActive como false.")
   public Response deactivateBenefit(@PathParam("id") Long id) {
     service.deactivateBenefit(id);
     var response = ResponseModel.success(Status.OK.getStatusCode());
@@ -138,6 +166,8 @@ public class AdminResource {
 
   @DELETE
   @Path("/benefit/{id}")
+  @Tag(name = "Admin - Benefícios")
+  @Operation(summary = "Excluir benefício", description = "Exclusão física e irreversível do benefício.")
   public Response deleteBenefit(@PathParam("id") Long id) {
     service.deleteBenefit(id);
     var response = ResponseModel.success(Status.OK.getStatusCode());
