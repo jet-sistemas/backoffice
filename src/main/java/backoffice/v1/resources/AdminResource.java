@@ -67,6 +67,14 @@ public class AdminResource {
   }
 
   @GET
+  @Path("/user/{id}")
+  public Response findUserById(@PathParam("id") Long id) {
+    var result = service.findUserById(id);
+    var response = ResponseModel.success(Status.OK.getStatusCode(), result);
+    return Response.ok(response).build();
+  }
+
+  @GET
   @Path("/user")
   public Response listUsers(
       @QueryParam("type") UserTypeEnum type,

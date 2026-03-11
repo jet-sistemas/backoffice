@@ -105,6 +105,17 @@ public class AdminService {
     userRepository.delete(user);
   }
 
+  public UserWithSponsorDTO findUserById(Long userId) {
+    return userService.findById(userId)
+        .map(user -> {
+          Sponsor sponsor = isSponsorType(user.getType())
+              ? sponsorService.findByUserId(userId).orElse(null)
+              : null;
+          return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor);
+        })
+        .orElse(null);
+  }
+
   public Pageable<UserWithSponsorDTO> listUsers(UserTypeEnum type, SponsorTierEnum tier, Boolean isActive, PageDTO pageDTO) {
     Pageable<User> pageable = userRepository.findAllPaginated(type, tier, isActive, pageDTO);
 
