@@ -2,6 +2,9 @@ package backoffice.v1.dtos.sponsor;
 
 import java.time.Instant;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
 import backoffice.v1.dtos.user.UserMinDTO;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
 import backoffice.v1.entities.enums.SponsorPersonaEnum;
@@ -17,6 +20,8 @@ import lombok.NoArgsConstructor;
 @Builder
 public class SponsorDTO {
   private Long id;
+
+  @JsonInclude(Include.NON_NULL)
   private UserMinDTO user;
   private String publicName;
   private SponsorTierEnum tier;

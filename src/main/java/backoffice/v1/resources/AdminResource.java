@@ -3,10 +3,11 @@ package backoffice.v1.resources;
 import backoffice.common.database.Pageable;
 import backoffice.common.requests.ResponseModel;
 import backoffice.v1.dtos.common.PageDTO;
-import backoffice.v1.dtos.sponsor.SponsorCreateDTO;
-import backoffice.v1.dtos.sponsor.SponsorDTO;
-import backoffice.v1.dtos.sponsor.SponsorUpdateDTO;
+import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
+import backoffice.v1.dtos.user.UserWithSponsorDTO;
+import backoffice.v1.dtos.user.UserWithSponsorUpdateDTO;
 import backoffice.v1.entities.enums.SponsorTierEnum;
+import backoffice.v1.entities.enums.UserTypeEnum;
 import backoffice.v1.services.AdminService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -32,33 +33,30 @@ public class AdminResource {
   private AdminService service;
 
   @POST
-  @Path("/sponsor")
-  public Response createSponsor(@Valid SponsorCreateDTO dto) {
-    var result = service.createSponsor(dto);
-
+  @Path("/user")
+  public Response createUser(@Valid UserWithSponsorCreateDTO dto) {
+    var result = service.createUser(dto);
     var response = ResponseModel.success(Status.CREATED.getStatusCode(), result);
-
     return Response.status(Status.CREATED).entity(response).build();
   }
 
   @PUT
-  @Path("/sponsor/{userId}")
-  public Response updateSponsor(@PathParam("userId") Long userId, @Valid SponsorUpdateDTO dto) {
-    var result = service.updateSponsor(userId, dto);
-
+  @Path("/user/{id}")
+  public Response updateUser(@PathParam("id") Long id, @Valid UserWithSponsorUpdateDTO dto) {
+    var result = service.updateUser(id, dto);
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
-
     return Response.ok(response).build();
   }
 
   @GET
-  @Path("/sponsor")
-  public Response listSponsors(@QueryParam("tier") SponsorTierEnum tier,
+  @Path("/user")
+  public Response listUsers(
+      @QueryParam("type") UserTypeEnum type,
+      @QueryParam("tier") SponsorTierEnum tier,
       @QueryParam("page") Integer page,
       @QueryParam("size") Integer size) {
-    Pageable<SponsorDTO> result = service.listSponsors(tier, PageDTO.of(page, size));
+    Pageable<UserWithSponsorDTO> result = service.listUsers(type, tier, PageDTO.of(page, size));
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
-
     return Response.ok(response).build();
   }
 }

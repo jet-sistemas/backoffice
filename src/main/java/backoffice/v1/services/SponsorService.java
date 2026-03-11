@@ -1,92 +1,69 @@
 package backoffice.v1.services;
 
-import backoffice.common.database.Pageable;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import backoffice.common.exceptions.MessageErrorEnum;
 import backoffice.common.exceptions.customs.BusinessException;
 import backoffice.common.exceptions.customs.ConflictException;
-import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.mappers.SponsorMapper;
-import backoffice.common.utils.PasswordUtils;
-import backoffice.v1.dtos.common.PageDTO;
-import backoffice.v1.dtos.sponsor.SponsorCreateDTO;
-import backoffice.v1.dtos.sponsor.SponsorDTO;
-import backoffice.v1.dtos.sponsor.SponsorUpdateDTO;
-import backoffice.v1.dtos.user.UserCreateDTO;
+import backoffice.v1.dtos.sponsor.SponsorDataCreateDTO;
+import backoffice.v1.dtos.sponsor.SponsorDataUpdateDTO;
 import backoffice.v1.entities.Sponsor;
 import backoffice.v1.entities.User;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
-import backoffice.v1.entities.enums.SponsorTierEnum;
-import backoffice.v1.entities.enums.UserTypeEnum;
 import backoffice.v1.repositories.SponsorRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 
 @ApplicationScoped
 public class SponsorService {
   @Inject
-  private UserService userService;
-
-  @Inject
   private SponsorRepository sponsorRepository;
 
-  @Transactional
-  public SponsorDTO createSponsor(SponsorCreateDTO dto) {
-    UserCreateDTO userData = dto.getUser();
-
-    userService.validateUniqueFields(userData.getEmail(), userData.getDocument(), userData.getCode());
-
+  public Sponsor create(SponsorDataCreateDTO dto, User user) {
     if (dto.getWhatsapp() != null && !dto.getWhatsapp().isBlank()) {
       validateUniqueWhatsapp(dto.getWhatsapp());
     }
 
-    validatePersonaByEntityType(dto);
+    validatePersonaByEntityType(dto.getEntityType(), dto.getPersona());
 
-    userData.setPassword(PasswordUtils.hashPass("temp@1234"));
-    userData.setType(UserTypeEnum.SPONSOR.name());
-
-    User user = userService.create(userData);
-
-    var sponsor = SponsorMapper.fromDTO(dto, user);
+    var sponsor = SponsorMapper.fromDataDTO(dto, user);
     sponsorRepository.persistAndFlush(sponsor);
 
-    return SponsorMapper.fromEntityToSponsorDTO(sponsor);
+    return sponsor;
   }
 
-  @Transactional
-  public SponsorDTO updateSponsor(Long userId, SponsorUpdateDTO dto) {
-    User user = userService.findById(userId)
-        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
-
-    if (!UserTypeEnum.SPONSOR.equals(user.getType()) && !UserTypeEnum.SPONSOR_MEMBER.equals(user.getType())) {
-      throw new BusinessException(MessageErrorEnum.SPONSOR_NOT_FOUND.getMessage(), 400);
-    }
-
-    Sponsor sponsor = sponsorRepository.findByUserId(userId)
-        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.SPONSOR_NOT_FOUND.getMessage()));
-
-    userService.validateUniqueFieldsForUpdate(userId, dto.getEmail(), dto.getDocument());
-
+  public Sponsor update(Sponsor sponsor, SponsorDataUpdateDTO dto) {
     if (dto.getWhatsapp() != null && !dto.getWhatsapp().isBlank()) {
       validateUniqueWhatsappForUpdate(dto.getWhatsapp(), sponsor.getId());
     }
 
     validatePersonaByEntityTypeForUpdate(dto, sponsor);
 
-    SponsorMapper.applyUpdate(dto, sponsor, user);
-
+    SponsorMapper.applyDataUpdate(dto, sponsor);
     sponsorRepository.persistAndFlush(sponsor);
 
-    return SponsorMapper.fromEntityToSponsorDTO(sponsor);
+    return sponsor;
   }
 
-  public Pageable<SponsorDTO> listSponsors(SponsorTierEnum tier, PageDTO pageDTO) {
-    var pageable = sponsorRepository.findActiveSponsors(tier, pageDTO);
-
-    return SponsorMapper.fromEntityToPageableDTO(pageable);
+  public Optional<Sponsor> findByUserId(Long userId) {
+    return sponsorRepository.findByUserId(userId);
   }
 
-  private void validateUniqueWhatsapp(String whatsapp) {
+  public Map<Long, Sponsor> findByUserIds(List<Long> userIds) {
+    if (userIds.isEmpty()) return Map.of();
+
+    return sponsorRepository
+        .find("user.id in ?1", userIds)
+        .list()
+        .stream()
+        .collect(Collectors.toMap(s -> s.getUser().getId(), s -> s));
+  }
+
+  public void validateUniqueWhatsapp(String whatsapp) {
     sponsorRepository.findByWhatsapp(whatsapp).ifPresent(s -> {
       throw new ConflictException(MessageErrorEnum.SPONSOR_ALREADY_EXISTS.getMessage());
     });
@@ -98,9 +75,8 @@ public class SponsorService {
     }
   }
 
-  private void validatePersonaByEntityType(SponsorCreateDTO dto) {
-    SponsorEntityTypeEnum entityType = SponsorEntityTypeEnum.valueOf(dto.getEntityType());
-    String persona = dto.getPersona();
+  private void validatePersonaByEntityType(String entityTypeStr, String persona) {
+    SponsorEntityTypeEnum entityType = SponsorEntityTypeEnum.valueOf(entityTypeStr.toUpperCase());
 
     if (SponsorEntityTypeEnum.PERSON.equals(entityType)
         && (persona == null || persona.isBlank())) {
@@ -108,12 +84,14 @@ public class SponsorService {
     }
   }
 
-  private void validatePersonaByEntityTypeForUpdate(SponsorUpdateDTO dto, Sponsor sponsor) {
+  private void validatePersonaByEntityTypeForUpdate(SponsorDataUpdateDTO dto, Sponsor sponsor) {
     SponsorEntityTypeEnum effectiveEntityType = dto.getEntityType() != null
         ? SponsorEntityTypeEnum.valueOf(dto.getEntityType().toUpperCase())
         : sponsor.getEntityType();
 
-    String effectivePersona = dto.getPersona() != null ? dto.getPersona() : (sponsor.getPersona() != null ? sponsor.getPersona().name() : null);
+    String effectivePersona = dto.getPersona() != null
+        ? dto.getPersona()
+        : (sponsor.getPersona() != null ? sponsor.getPersona().name() : null);
 
     if (SponsorEntityTypeEnum.PERSON.equals(effectiveEntityType)
         && (effectivePersona == null || effectivePersona.isBlank())) {
