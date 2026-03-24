@@ -44,8 +44,11 @@ src/main/java/backoffice/
     │   └── user/                    # DTOs de usuário
     ├── entities/                    # Entidades JPA (representação das tabelas)
     │   └── enums/                   # Enums de domínio (status, tipos)
-    ├── repositories/                # Repositórios Panache
-    ├── resources/                   # Endpoints REST (controllers)
+    ├── openapi/                     # Especificação OpenAPI + contrato JAX-RS (fora dos Resources)
+    │   ├── api/                     # Interfaces {Domínio}Api (@Path, @Operation, @APIResponses, …)
+    │   └── dto/                     # Tipos só para schema (Envelope* → ResponseModel<T> + @Schema)
+    ├── repositories/              # Repositórios Panache
+    ├── resources/                   # Implementações REST; implementam interfaces em openapi/api
     └── services/                    # Regras de negócio, orquestração e conversões
 ```
 
@@ -142,6 +145,16 @@ Validadores customizados para Bean Validation:
   - A obrigatoriedade do campo deve ser controlada por `@NotNull` ou `@NotBlank`
   - Quando o valor está presente, valida se corresponde a uma das constantes do enum (case-insensitive)
 
+### `v1/openapi/`
+
+Pacote **somente da versão da API** (`v1`): centraliza a especificação OpenAPI e o contrato REST, para não poluir `v1/resources/`.
+
+- **`openapi/api/`** — interfaces `{Domínio}Api` (ex.: `AdminApi`, `AuthApi`) com:
+  - anotações JAX-RS de recurso e método (`@Path`, verbos HTTP, `@Produces`, `@Consumes`, `@RolesAllowed`, `@Authenticated`, `@QueryParam`, `@PathParam`, `@Context`, `@Valid`, etc.);
+  - anotações MicroProfile OpenAPI (`@Tag`, `@Operation`, `@APIResponses`, `@Parameter` em query params).
+  O `{Domínio}Resource` **implementa** a interface correspondente e mantém apenas `@Inject` do service e o corpo dos métodos (delegação + `ResponseModel`).
+- **`openapi/dto/`** — classes **exclusivas para documentação de schema** no OpenAPI: subclasses de `ResponseModel<T>` (ex.: `EnvelopeUserWithSponsorDTO`) com `@Schema`, para o SmallRye OpenAPI inferir o tipo de `data` no envelope. Não são os DTOs de transporte da API — estes continuam em `v1/dtos/`.
+
 ---
 
 ## Entidades (JPA)
@@ -235,9 +248,10 @@ Isso mantém cada Resource como um "controle remoto fino" que apenas:
 - Delega para o Service
 - Envelopa a resposta com `ResponseModel`
 
+A especificação OpenAPI e as anotações JAX-RS de recurso ficam na interface em `v1/openapi/api/{Domínio}Api`; o Resource **implementa** essa interface e não repete `@Operation` / `@APIResponses`.
+
 ```java
-@Path("/v1/admin")
-public class AdminResource {
+public class AdminResource implements AdminApi {
     @Inject
     private AdminService service;  // Único service injetado
 }
@@ -486,6 +500,8 @@ Exceção lançada no Service
 | Elemento | Padrão | Exemplo |
 |----------|--------|---------|
 | Resource | `{Domínio}Resource` | `AdminResource` |
+| Contrato REST + OpenAPI | `{Domínio}Api` | `AdminApi` |
+| Schema envelope OpenAPI | `Envelope{Payload}` | `EnvelopeBenefitDTO` |
 | Service | `{Domínio}Service` | `AdminService` |
 | Repository | `{Domínio}Repository` | `UserRepository` |
 | Entity | Nome do domínio | `User`, `Sponsor`, `Member` |
@@ -504,7 +520,7 @@ Exceção lançada no Service
 
 - Autenticação via **JWT** (SmallRye)
 - Roles: `ADM`, `SPONSOR`, `MEMBER`, `SPONSOR_MEMBER`
-- `@RolesAllowed` no nível do Resource para autorização
+- `@RolesAllowed` no contrato em `v1/openapi/api` (interfaces `{Domínio}Api`) ou no Resource quando aplicável
 - `@PermitAll` para endpoints públicos (cadastro, login)
 - ID do usuário extraído do JWT claim `id` nos Resources
 

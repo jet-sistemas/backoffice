@@ -30,6 +30,13 @@ Você é um especialista em programação Java, Quarkus, Jakarta EE e tecnologia
 - Todos os erros devem ser tratados pelo `src/main/java/backoffice/common/exceptions/GlobalExceptionMapper.java`
   - Todas as mensagens de erro devem ser mapeadas no `src/main/java/backoffice/common/exceptions/MessageErrorEnum.java`
 
+## Especificação OpenAPI (MicroProfile)
+
+- A documentação exposta pelo **SmallRye OpenAPI** (Swagger UI, `/q/openapi`) e o **contrato JAX-RS** das rotas ficam centralizados em `src/main/java/backoffice/v1/openapi/`, **fora** de `v1/resources/`, para manter os Resources enxutos.
+- **`openapi/api/`** — interfaces `{Domínio}Api` (ex.: `AdminApi`, `AuthApi`) com anotações Jakarta REST (`@Path`, verbos HTTP, `@RolesAllowed`, `@Authenticated`, parâmetros, `@Valid`) e MicroProfile OpenAPI (`@Tag`, `@Operation`, `@APIResponses`, `@Parameter`). O Resource correspondente **implementa** essa interface e contém só injeção de service e o corpo dos métodos.
+- **`openapi/dto/`** — classes **apenas para schema** no OpenAPI (ex.: `Envelope*DTO` estendendo `ResponseModel<T>` com `@Schema`), para tipar o payload em `data`; não substituem os DTOs de domínio em `v1/dtos/`.
+- O envelope padrão de runtime continua em `common/requests/ResponseModel.java` (incluindo `@Schema` nos campos do envelope quando fizer sentido).
+
 ## Convenções de Nomenclatura
 
 - Use PascalCase para nomes de classes (ex.: `UserResource`, `AdminService`).
