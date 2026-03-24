@@ -30,7 +30,7 @@ public class AuthService {
       throw new ForbiddenException(MessageErrorEnum.ACCOUNT_INVALID_TO_ACTION.getMessage());
     }
         
-    if (PasswordUtils.checkPass(user.getPassword(), dto.getPassword())) {
+    if (!PasswordUtils.checkPass(dto.getPassword(), user.getPassword())) {
       throw new BadRequestException(MessageErrorEnum.USER_PASS_NOT_MATCH.getMessage());
     }
 
