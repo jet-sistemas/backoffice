@@ -6,14 +6,15 @@ import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
 import backoffice.v1.dtos.common.PageDTO;
+import backoffice.v1.dtos.user.ListUsersQueryDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorDTO;
 import backoffice.v1.dtos.user.UserWithSponsorUpdateDTO;
-import backoffice.v1.entities.enums.SponsorTierEnum;
-import backoffice.v1.entities.enums.UserTypeEnum;
 import backoffice.v1.openapi.api.AdminApi;
 import backoffice.v1.services.AdminService;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
+import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 
@@ -57,13 +58,12 @@ public class AdminResource implements AdminApi {
   }
 
   @Override
-  public Response listUsers(
-      UserTypeEnum type,
-      SponsorTierEnum tier,
-      Boolean isActive,
-      Integer page,
-      Integer size) {
-    Pageable<UserWithSponsorDTO> result = service.listUsers(type, tier, isActive, PageDTO.of(page, size));
+  public Response listUsers(@Valid @BeanParam ListUsersQueryDTO query) {
+    Pageable<UserWithSponsorDTO> result = service.listUsers(
+        query.resolveType(),
+        query.resolveTier(),
+        query.getIsActive(),
+        PageDTO.of(query.getPage(), query.getSize()));
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
     return Response.ok(response).build();
   }

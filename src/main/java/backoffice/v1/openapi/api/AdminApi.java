@@ -10,10 +10,9 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
+import backoffice.v1.dtos.user.ListUsersQueryDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorUpdateDTO;
-import backoffice.v1.entities.enums.SponsorTierEnum;
-import backoffice.v1.entities.enums.UserTypeEnum;
 import backoffice.v1.openapi.dto.EnvelopeBenefitDTO;
 import backoffice.v1.openapi.dto.EnvelopeBenefitListDTO;
 import backoffice.v1.openapi.dto.EnvelopeErrorDTO;
@@ -28,6 +27,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -100,12 +100,7 @@ public interface AdminApi {
 	@APIResponses({
 			@APIResponse(responseCode = "200", description = "Lista paginada de usuários", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeUserWithSponsorListDTO.class)))
 	})
-	Response listUsers(
-			@Parameter(description = "Tipo do usuário") @QueryParam("type") UserTypeEnum type,
-			@Parameter(description = "Tier do patrocinador") @QueryParam("tier") SponsorTierEnum tier,
-			@Parameter(description = "Filtrar por conta ativa/inativa") @QueryParam("isActive") Boolean isActive,
-			@Parameter(description = "Número da página (0-based)") @QueryParam("page") Integer page,
-			@Parameter(description = "Itens por página") @QueryParam("size") Integer size);
+	Response listUsers(@Valid @BeanParam ListUsersQueryDTO query);
 
 	@POST
 	@Path("/benefit")

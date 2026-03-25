@@ -29,6 +29,7 @@ Você é um especialista em programação Java, Quarkus, Jakarta EE e tecnologia
 - Todas as respostas da API devem seguir o modelo `src/main/java/backoffice/common/requests/ResponseModel.java`
 - Todos os erros devem ser tratados pelo `src/main/java/backoffice/common/exceptions/GlobalExceptionMapper.java`
   - Todas as mensagens de erro devem ser mapeadas no `src/main/java/backoffice/common/exceptions/MessageErrorEnum.java`
+- **Validação de entrada** (body JSON, query/path com constraints de formato e enum) ocorre na **borda REST** (Bean Validation com `@Valid`, DTOs com `@BeanParam` quando necessário), **antes** da chamada aos Services. **Regras de negócio** e validações que dependem do estado persistido ficam nos Services. Detalhes e exemplos em `code-style.mdc` (regra 6 e `common/validators/`).
 
 ## Especificação OpenAPI (MicroProfile)
 

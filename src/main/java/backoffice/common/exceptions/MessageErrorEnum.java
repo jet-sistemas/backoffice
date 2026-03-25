@@ -19,6 +19,7 @@ public enum MessageErrorEnum {
   SPONSOR_NOT_FOUND("Patrocinador não encontrado."),
   SPONSOR_ALREADY_EXISTS("Um patrocinador já existe com estes dados."),
   SPONSOR_INVALID_TYPE_ENUM("Tipo de patrocinador inválido."),
+  SPONSOR_TIER_INVALID_ENUM("Tier de patrocinador inválido."),
   SPONSOR_NOT_ACTIVE("Este patrocinador não está ativo."),
   SPONSOR_PERSONA_REQUIRED_FOR_PERSON(
       "Persona é obrigatória quando o tipo de entidade é PERSON. Valores aceitos: POLITICIAN, INFLUENCER, ATHLETE, OTHER"),
