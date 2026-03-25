@@ -44,8 +44,11 @@ src/main/java/backoffice/
     │   └── user/                    # DTOs de usuário
     ├── entities/                    # Entidades JPA (representação das tabelas)
     │   └── enums/                   # Enums de domínio (status, tipos)
-    ├── repositories/                # Repositórios Panache
-    ├── resources/                   # Endpoints REST (controllers)
+    ├── openapi/                     # Especificação OpenAPI + contrato JAX-RS (fora dos Resources)
+    │   ├── api/                     # Interfaces {Domínio}Api (@Path, @Operation, @APIResponses, …)
+    │   └── dto/                     # Tipos só para schema (Envelope* → ResponseModel<T> + @Schema)
+    ├── repositories/              # Repositórios Panache
+    ├── resources/                   # Implementações REST; implementam interfaces em openapi/api
     └── services/                    # Regras de negócio, orquestração e conversões
 ```
 
@@ -138,6 +141,21 @@ Validadores customizados para Bean Validation:
 
 - `EnumConstraint` — anotação customizada para validar enums
 - `EnumValidator` — implementação do validador de enums
+  - **Comportamento**: aceita valores `null` ou em branco como válidos (retorna `true`)
+  - A obrigatoriedade do campo deve ser controlada por `@NotNull` ou `@NotBlank`
+  - Quando o valor está presente, valida se corresponde a uma das constantes do enum (case-insensitive)
+  - Uso típico em **body** e em **query params** (campos de DTO com `@BeanParam`) para evitar conversão JAX-RS
+    direta para enum, que em valor inválido pode gerar 500 em vez de 400
+
+### `v1/openapi/`
+
+Pacote **somente da versão da API** (`v1`): centraliza a especificação OpenAPI e o contrato REST, para não poluir `v1/resources/`.
+
+- **`openapi/api/`** — interfaces `{Domínio}Api` (ex.: `AdminApi`, `AuthApi`) com:
+  - anotações JAX-RS de recurso e método (`@Path`, verbos HTTP, `@Produces`, `@Consumes`, `@RolesAllowed`, `@Authenticated`, `@QueryParam`, `@PathParam`, `@Context`, `@Valid`, etc.);
+  - anotações MicroProfile OpenAPI (`@Tag`, `@Operation`, `@APIResponses`, `@Parameter` em query params).
+  O `{Domínio}Resource` **implementa** a interface correspondente e mantém apenas `@Inject` do service e o corpo dos métodos (delegação + `ResponseModel`).
+- **`openapi/dto/`** — classes **exclusivas para documentação de schema** no OpenAPI: subclasses de `ResponseModel<T>` (ex.: `EnvelopeUserWithSponsorDTO`) com `@Schema`, para o SmallRye OpenAPI inferir o tipo de `data` no envelope. Não são os DTOs de transporte da API — estes continuam em `v1/dtos/`.
 
 ---
 
@@ -229,12 +247,14 @@ Cada Resource injeta **um único** Service correspondente. `AdminResource` injet
 Isso mantém cada Resource como um "controle remoto fino" que apenas:
 
 - Extrai parâmetros da requisição (path params, query params, JWT claims)
+- Garante **validação de entrada** na borda REST (`@Valid` em DTOs de body; para vários query params, DTO com `@BeanParam` e constraints nos campos — ver regra 6)
 - Delega para o Service
 - Envelopa a resposta com `ResponseModel`
 
+A especificação OpenAPI e as anotações JAX-RS de recurso ficam na interface em `v1/openapi/api/{Domínio}Api`; o Resource **implementa** essa interface e não repete `@Operation` / `@APIResponses`.
+
 ```java
-@Path("/v1/admin")
-public class AdminResource {
+public class AdminResource implements AdminApi {
     @Inject
     private AdminService service;  // Único service injetado
 }
@@ -276,13 +296,30 @@ Após persistência ou consulta, o Service converte a Entity para DTO antes de r
 Resource. Os Mappers estáticos por domínio são usados para essa conversão, incluindo variantes
 para listas (`fromEntityToListDTO`) e paginação (`fromEntityToPageableDTO`).
 
-### 6. Manipulação de erro e regra de negócio na camada de Service
+### 6. Validação de entrada (antes do Service) vs regra de negócio (no Service)
 
-Toda validação de negócio, verificação de permissão e lançamento de exceções acontece no Service.
-O Resource é "burro" — ele apenas delega e envelopa.
+**Validação de entrada** — formato, enums e obrigatoriedade de dados **de transporte** (JSON de body,
+query strings, path onde couber) — deve ocorrer **antes** da camada de Service, na borda REST:
+
+- **Body**: DTO com Bean Validation (`@Valid` no parâmetro do `{Domínio}Api` / Resource).
+- **Vários query params** (filtros de listagem, paginação com validação, etc.): classe em `v1/dtos/{dominio}/`
+  (ex.: `ListUsersQueryDTO`) com `@QueryParam` nos campos, constraints (`@EnumConstraint`, `@NotNull`, etc.) e
+  parâmetro do endpoint `@Valid @BeanParam EssaClasse`. O runtime valida ao despachar o método; em falha,
+  responde **400** via `GlobalExceptionMapper` + `ConstraintViolationException`, sem entrar no Service.
+- **Mensagens** das constraints de entrada devem permanecer alinhadas ao texto em `MessageErrorEnum`
+  quando existir entrada correspondente (o atributo `message` das anotações não pode referenciar o enum
+  em tempo de compilação; mantenha o mesmo texto).
+
+Conversão de valores já validados para tipos de domínio (`String` → enum após `@EnumConstraint`, montagem
+de `PageDTO`, etc.) pode ser feita no Resource logo após a validação bem-sucedida (ex.: métodos `resolve*()`
+no DTO de query), antes de chamar o Service.
+
+**Regra de negócio** — invariantes de domínio, existência de agregados, unicidade, estados proibidos,
+permissões contextualizadas — permanece no **Service**, com exceções explícitas (`BusinessException`,
+`NotFoundException`, `BadRequestException` para regra de negócio, etc.).
 
 ```java
-// Dentro do Service — validação + exceção
+// Dentro do Service — exemplo de regra de negócio (não validação de formato de entrada)
 if (!sponsor.getIsActive()) {
     throw new BusinessException(
         MessageErrorEnum.SPONSOR_NOT_ACTIVE.getMessage(), 400
@@ -325,6 +362,109 @@ public SponsorDTO createSponsor(SponsorCreateDTO dto) {
 Os Repositories implementam `PanacheRepository<Entity>` e encapsulam consultas ao banco.
 Services nunca acessam o `EntityManager` diretamente — sempre passam pelo Repository
 correspondente.
+
+### 10. Queries exclusivamente no Repository
+
+Toda montagem de query (filtros, ordenação, sort) e paginação deve viver no Repository.
+O Service chama o Repository passando parâmetros e recebe `Pageable<Entity>`.
+O Service **nunca** monta queries (`find()`, `page()`) diretamente.
+
+```java
+// ✅ CORRETO — Query encapsulada no Repository
+// Repository
+public Pageable<Sponsor> findActiveSponsors(SponsorTierEnum tier, PageDTO pageDTO) {
+    var query = tier != null
+        ? find("tier = ?1 and isActive = true", tier)
+        : find("isActive = true");
+    var paginatedQuery = query.page(pageDTO.getPagination());
+    return new Pageable<>(paginatedQuery, pageDTO.getOneBasePage());
+}
+
+// Service
+public Pageable<SponsorDTO> listSponsors(SponsorTierEnum tier, PageDTO pageDTO) {
+    var pageable = sponsorRepository.findActiveSponsors(tier, pageDTO);
+    return SponsorMapper.fromEntityToPageableDTO(pageable);
+}
+
+// ❌ PROIBIDO — Query montada no Service
+public Pageable<SponsorDTO> listSponsors(SponsorTierEnum tier, PageDTO pageDTO) {
+    var query = sponsorRepository.find("tier = ?1 and isActive = true", tier);
+    // ...
+}
+```
+
+### 11. Conversão de Pageable no Mapper
+
+A transformação de `Pageable<Entity>` para `Pageable<DTO>` deve ser feita via método estático
+no Mapper do domínio (`fromEntityToPageableDTO`). O Service **nunca** monta
+`Pageable.builder()` diretamente.
+
+```java
+// ✅ CORRETO — Conversão no Mapper
+public static Pageable<SponsorDTO> fromEntityToPageableDTO(Pageable<Sponsor> data) {
+    List<SponsorDTO> dtos = data.getData().stream()
+        .map(SponsorMapper::fromEntityToSponsorDTO)
+        .toList();
+
+    return Pageable.<SponsorDTO>builder()
+        .data(dtos)
+        .totalElements(data.getTotalElements())
+        .totalPages(data.getTotalPages())
+        .pageSize(data.getPageSize())
+        .currentPage(data.getCurrentPage())
+        .build();
+}
+
+// ❌ PROIBIDO — Pageable.builder() no Service
+var dtos = pageable.getData().stream().map(...).toList();
+return Pageable.<SponsorDTO>builder().data(dtos)...build();
+```
+
+### 12. Reusar DTOs e Mappers existentes
+
+Nunca criar builders inline de Entity/DTO quando já existir um Mapper ou DTO equivalente.
+Mappers devem expor variantes para cada necessidade de conversão:
+
+- `fromDTO(CreateDTO)` → Entity
+- `fromEntityToDto(Entity)` → DTO completo
+- `fromEntityToMinimal(Entity)` → DTO mínimo
+- `fromEntityToListDTO(List<Entity>)` → lista de DTOs
+- `fromEntityToPageableDTO(Pageable<Entity>)` → Pageable de DTOs
+
+```java
+// ✅ CORRETO — Delegar ao Mapper do domínio
+.user(UserMapper.fromEntityToMinimal(sponsor.getUser()))
+
+// ❌ PROIBIDO — Builder inline quando já existe Mapper
+.user(UserMinDTO.builder()
+    .id(sponsor.getUser().getId())
+    .email(sponsor.getUser().getEmail())
+    .build())
+```
+
+### 13. Inner classes de DTO são proibidas
+
+Todo DTO deve ser uma classe própria dentro do pacote `dtos/{dominio}/`. Inner classes dentro
+de DTOs são consideradas **falha de arquitetura**. Se não existir um DTO reutilizável para o
+caso, deve-se criar um novo DTO no pacote correto. Em caso de dúvida sobre onde alocar o novo
+DTO, o desenvolvedor deve consultar a equipe antes de criar.
+
+```java
+// ✅ CORRETO — DTO em classe própria
+public class SponsorCreateDTO {
+    @Valid @NotNull
+    private UserCreateDTO user;  // DTO existente reutilizado
+}
+
+// ❌ PROIBIDO — Inner class de DTO
+public class SponsorCreateDTO {
+    private UserData user;
+
+    public static class UserData { // Falha de arquitetura
+        private String email;
+    }
+}
+```
 
 ---
 
@@ -380,6 +520,8 @@ Exceção lançada no Service
 | Elemento | Padrão | Exemplo |
 |----------|--------|---------|
 | Resource | `{Domínio}Resource` | `AdminResource` |
+| Contrato REST + OpenAPI | `{Domínio}Api` | `AdminApi` |
+| Schema envelope OpenAPI | `Envelope{Payload}` | `EnvelopeBenefitDTO` |
 | Service | `{Domínio}Service` | `AdminService` |
 | Repository | `{Domínio}Repository` | `UserRepository` |
 | Entity | Nome do domínio | `User`, `Sponsor`, `Member` |
@@ -398,7 +540,7 @@ Exceção lançada no Service
 
 - Autenticação via **JWT** (SmallRye)
 - Roles: `ADM`, `SPONSOR`, `MEMBER`, `SPONSOR_MEMBER`
-- `@RolesAllowed` no nível do Resource para autorização
+- `@RolesAllowed` no contrato em `v1/openapi/api` (interfaces `{Domínio}Api`) ou no Resource quando aplicável
 - `@PermitAll` para endpoints públicos (cadastro, login)
 - ID do usuário extraído do JWT claim `id` nos Resources
 

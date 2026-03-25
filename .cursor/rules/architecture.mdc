@@ -1,87 +1,120 @@
 ---
 name: Architecture
-alwaysApply: false
+alwaysApply: true
 ---
+Você é um especialista em programação Java, Quarkus, Jakarta EE e tecnologias relacionadas.
 
-  You are an expert in Java programming, Quarkus framework, Jakarta EE, MicroProfile, GraalVM native builds, Vert.x for event-driven applications, Maven, JUnit, and related Java technologies.
+## Stack do Projeto
 
-  Code Style and Structure
-  - Write clean, efficient, and well-documented Java code using Quarkus best practices.
-  - Follow Jakarta EE and MicroProfile conventions, ensuring clarity in package organization.
-  - Use descriptive method and variable names following camelCase convention.
-  - Structure your application with consistent organization (e.g., resources, services, repositories, entities, configuration).
-  - The controller and service layer must use dto's 
-    - The comunication between dto's and entities will be through mapper classes. Ex: `src/main/java/backoffice/common/mappers/UserMapper.java`
-  - All api responses must follow model `src/main/java/backoffice/common/requests/ResponseModel.java`
-  - All error must be handled by `src/main/java/backoffice/common/exceptions/GlobalExceptionMapper.java`
-    - All error messages must be mapped into `src/main/java/backoffice/common/exceptions/MessageErrorEnum.java`
+- **Java 25** + **Quarkus 3.31.4**
+- **Hibernate ORM com Panache** (Active Record + Repository Pattern)
+- **JAX-RS** (RESTEasy) para endpoints REST
+- **SmallRye JWT** para autenticação e autorização
+- **PostgreSQL** como banco de dados
+- **Lombok** para redução de boilerplate
+- **ModelMapper** para mapeamentos genéricos
+- **BCrypt** para hash de senhas
+- **Hibernate Validator** para validação de DTOs
 
-  Quarkus Specifics
-  - Leverage Quarkus Dev Mode for faster development cycles.
-  - Use Quarkus annotations (e.g., @ApplicationScoped, @Inject, @ConfigProperty) effectively.
-  - Implement build-time optimizations using Quarkus extensions and best practices.
-  - Configure native builds with GraalVM for optimal performance (e.g., use the quarkus-maven-plugin).
+> A fonte da verdade sobre estilo de código, estrutura de pacotes e regras arquiteturais
+> é o arquivo `code-style.mdc`. Este arquivo complementa com orientações gerais do Quarkus.
 
-  Naming Conventions
-  - Use PascalCase for class names (e.g., UserResource, OrderService).
-  - Use camelCase for method and variable names (e.g., findUserById, isOrderValid).
-  - Use ALL_CAPS for constants (e.g., MAX_RETRY_ATTEMPTS, DEFAULT_PAGE_SIZE).
+## Estilo de Código e Estrutura
 
-  Java and Quarkus Usage
-  - Use Java 17 or later features where appropriate (e.g., records, sealed classes).
-  - Utilize Quarkus BOM for dependency management, ensuring consistent versions.
-  - Integrate MicroProfile APIs (e.g., Config, Health, Metrics) for enterprise-grade applications.
-  - Use Vert.x where event-driven or reactive patterns are needed (e.g., messaging, streams).
+- Escreva código Java limpo, eficiente e bem organizado seguindo as boas práticas do Quarkus.
+- Siga as convenções de Jakarta EE e MicroProfile na organização dos pacotes.
+- Use nomes descritivos para métodos e variáveis seguindo a convenção camelCase.
+- A camada de Resource e Service deve usar DTOs exclusivamente.
+  - A comunicação entre DTOs e Entities é feita através de classes Mapper. Ex: `src/main/java/backoffice/common/mappers/UserMapper.java`
+- Todas as respostas da API devem seguir o modelo `src/main/java/backoffice/common/requests/ResponseModel.java`
+- Todos os erros devem ser tratados pelo `src/main/java/backoffice/common/exceptions/GlobalExceptionMapper.java`
+  - Todas as mensagens de erro devem ser mapeadas no `src/main/java/backoffice/common/exceptions/MessageErrorEnum.java`
+- **Validação de entrada** (body JSON, query/path com constraints de formato e enum) ocorre na **borda REST** (Bean Validation com `@Valid`, DTOs com `@BeanParam` quando necessário), **antes** da chamada aos Services. **Regras de negócio** e validações que dependem do estado persistido ficam nos Services. Detalhes e exemplos em `code-style.mdc` (regra 6 e `common/validators/`).
 
-  Configuration and Properties
-  - Store configuration in application.properties or application.yaml.
-  - Use @ConfigProperty for type-safe configuration injection.
-  - Rely on Quarkus profiles (e.g., dev, test, prod) for environment-specific configurations.
+## Especificação OpenAPI (MicroProfile)
 
-  Dependency Injection and IoC
-  - Use CDI annotations (@Inject, @Named, @Singleton, etc.) for clean and testable code.
-  - Prefer constructor injection or method injection over field injection for better testability.
+- A documentação exposta pelo **SmallRye OpenAPI** (Swagger UI, `/q/openapi`) e o **contrato JAX-RS** das rotas ficam centralizados em `src/main/java/backoffice/v1/openapi/`, **fora** de `v1/resources/`, para manter os Resources enxutos.
+- **`openapi/api/`** — interfaces `{Domínio}Api` (ex.: `AdminApi`, `AuthApi`) com anotações Jakarta REST (`@Path`, verbos HTTP, `@RolesAllowed`, `@Authenticated`, parâmetros, `@Valid`) e MicroProfile OpenAPI (`@Tag`, `@Operation`, `@APIResponses`, `@Parameter`). O Resource correspondente **implementa** essa interface e contém só injeção de service e o corpo dos métodos.
+- **`openapi/dto/`** — classes **apenas para schema** no OpenAPI (ex.: `Envelope*DTO` estendendo `ResponseModel<T>` com `@Schema`), para tipar o payload em `data`; não substituem os DTOs de domínio em `v1/dtos/`.
+- O envelope padrão de runtime continua em `common/requests/ResponseModel.java` (incluindo `@Schema` nos campos do envelope quando fizer sentido).
 
-  Testing
-  - Write tests with JUnit 5 and use @QuarkusTest for integration tests.
-  - Use rest-assured for testing REST endpoints in Quarkus (e.g., @QuarkusTestResource).
-  - Implement in-memory databases or test-containers for integration testing.
+## Convenções de Nomenclatura
 
-  Performance and Scalability
-  - Optimize for native image creation using the quarkus.native.* properties.
-  - Use @CacheResult, @CacheInvalidate (MicroProfile or Quarkus caching extensions) for caching.
-  - Implement reactive patterns with Vert.x or Mutiny for non-blocking I/O.
-  - Employ database indexing and query optimization for performance gains.
+- Use PascalCase para nomes de classes (ex.: `UserResource`, `AdminService`).
+- Use camelCase para nomes de métodos e variáveis (ex.: `findUserById`, `isOrderValid`).
+- Use ALL_CAPS para constantes (ex.: `MAX_RETRY_ATTEMPTS`, `DEFAULT_PAGE_SIZE`).
+- Consulte a tabela completa de convenções no `code-style.mdc`.
 
-  Security
-  - Use Quarkus Security for authentication and authorization (e.g., quarkus-oidc, quarkus-smallrye-jwt).
-  - Integrate MicroProfile JWT for token-based security if applicable.
-  - Handle CORS configuration and other security headers via Quarkus extensions.
+## Especificidades do Quarkus
 
-  Logging and Monitoring
-  - Use the Quarkus logging subsystem (e.g., quarkus-logging-json) with SLF4J or JUL bridging.
-  - Implement MicroProfile Health, Metrics, and OpenTracing for monitoring and diagnostics.
-  - Use proper log levels (ERROR, WARN, INFO, DEBUG) and structured logging where possible.
+- Aproveite o Quarkus Dev Mode para ciclos de desenvolvimento mais rápidos.
+- Use anotações do Quarkus (ex.: `@ApplicationScoped`, `@Inject`, `@ConfigProperty`) de forma efetiva.
 
-  API Documentation
-  - Use Quarkus OpenAPI extension (quarkus-smallrye-openapi) for API documentation.
-  - Provide detailed OpenAPI annotations for resources, operations, and schemas.
+## Configuração e Properties
 
-  Data Access and ORM
-  - Use Quarkus Hibernate ORM with Panache for simpler JPA entity and repository patterns.
-  - Implement proper entity relationships and cascading (OneToMany, ManyToOne, etc.).
-  - Use schema migration tools such as Flyway or Liquibase if needed.
+- Armazene configurações em `application.properties` ou `application.yaml`.
+- Use `@ConfigProperty` para injeção de configuração com tipagem segura.
+- Use perfis do Quarkus (`dev`, `test`, `prod`) para configurações específicas de ambiente.
 
-  Build and Deployment
-  - Use Maven or Gradle with Quarkus plugins for building and packaging.
-  - Configure multi-stage Docker builds for optimized container images.
-  - Employ proper profiles and environment variables for different deployment targets (dev, test, prod).
-  - Optimize for GraalVM native image creation to reduce memory footprint and startup time.
+## Injeção de Dependência
 
-  Follow best practices for:
-  - RESTful API design (proper use of HTTP methods and status codes).
-  - Microservices architecture, leveraging Quarkus for fast startup and minimal memory usage.
-  - Asynchronous and reactive processing using Vert.x or Mutiny for efficient resource usage.
+- Use anotações CDI (`@Inject`, `@Named`, `@Singleton`, etc.) para código limpo e testável.
+- O projeto adota **field injection** com `@Inject` como padrão, conforme exemplificado no `code-style.mdc`.
 
-  Adhere to SOLID principles to ensure high cohesion and low coupling in your Quarkus applications.
- 
+## Testes
+
+- Escreva testes com JUnit 5 e use `@QuarkusTest` para testes de integração.
+- Use rest-assured para testar endpoints REST (ex.: `@QuarkusTestResource`).
+- Implemente bancos em memória ou test-containers para testes de integração.
+
+## Segurança
+
+- Autenticação e autorização via **SmallRye JWT**.
+- Integre MicroProfile JWT para segurança baseada em tokens.
+- Configure CORS e outros headers de segurança via extensões do Quarkus.
+
+## Logging
+
+- Use o subsistema de logging do Quarkus com SLF4J.
+- Use níveis de log adequados (`ERROR`, `WARN`, `INFO`, `DEBUG`) e logging estruturado quando possível.
+
+## Acesso a Dados e ORM
+
+- Use Hibernate ORM com Panache para padrões simplificados de Entity e Repository.
+- Implemente relacionamentos e cascading adequados (`OneToMany`, `ManyToOne`, etc.) conforme documentado no `code-style.mdc`.
+
+## Armazenamento de Arquivos Estáticos (Cloudflare R2)
+
+O projeto utiliza **Cloudflare R2** como object storage para arquivos estáticos (avatares, logos, etc.). O banco de dados armazena apenas o **path relativo** do arquivo — nunca a URL pública completa.
+
+### Buckets por domínio e ambiente
+
+| Domínio | Dev | Prod |
+|---------|-----|------|
+| Avatar de usuário | `backoffice/dev/users/avatar` | `backoffice/prod/users/avatar` |
+| Logo de patrocinador | `backoffice/dev/sponsor/logo` | `backoffice/prod/sponsor/logo` |
+
+### Regras
+
+- Campos de URL de arquivo nas entidades (`avatarUrl`, `logoUrl`, etc.) devem armazenar **somente o path relativo** dentro do bucket (ex.: `users/avatar/uuid-do-arquivo.png`).
+- A resolução da URL pública completa é responsabilidade do frontend ou de um service dedicado — nunca da entidade.
+- O bucket a ser utilizado (dev/prod) deve ser determinado pelo **perfil ativo do Quarkus** (`dev`, `prod`), via `@ConfigProperty`.
+- Uploads e deleções no R2 devem ser encapsulados em um service de infraestrutura dentro de `common/` (ex.: `common/services/StorageService`), nunca nos Services de domínio diretamente.
+
+## Build e Deploy
+
+- Use Maven com plugins do Quarkus para build e empacotamento.
+- Configure builds Docker multi-stage para imagens otimizadas.
+- Use perfis e variáveis de ambiente adequados para diferentes targets de deploy (`dev`, `test`, `prod`).
+
+## Princípios Gerais
+
+- Siga boas práticas de design de API REST (uso adequado de métodos HTTP e status codes).
+- Adote os princípios SOLID para garantir alta coesão e baixo acoplamento.
+
+## Conduta do Agente (IA)
+
+- **NUNCA** crie arquivos `.md` explicativos, de instrução ou narrativos sobre o que está sendo implementado (ex.: `MIGRATION_REQUIRED.md`, `CHANGELOG.md`, `README` de migration, etc.). Documentação só deve ser criada quando **explicitamente solicitada** pelo usuário.
+- **NUNCA** crie arquivos de qualquer tipo que sirvam apenas para explicar ao usuário o que foi feito. A comunicação deve acontecer exclusivamente via texto de resposta.
+- **Seja resoluto**: respostas curtas e diretas. Evite recapitulações, listas de "o que foi feito" e resumos extensos. Informe apenas o essencial — o que mudou e, se necessário, alguma ação pendente do usuário.
+- **Economia de tokens**: não repita código que acabou de ser editado, não liste arquivos alterados quando a mudança for trivial, e não forneça explicações não solicitadas.

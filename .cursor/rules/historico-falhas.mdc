@@ -1,0 +1,57 @@
+---
+name: Histórico de falhas
+description: Falhas conhecidas do projeto e como resolvê-las — consultar antes de sugerir soluções para erros similares
+alwaysApply: false
+---
+
+# Histórico de falhas e resoluções
+
+Este documento registra falhas já encontradas no projeto e as soluções aplicadas. **Agentes de IA: consulte-o ao diagnosticar erros parecidos e priorize as soluções aqui descritas.**
+
+---
+
+## 1. Porta 8080 já está em uso ao iniciar o Quarkus
+
+### Sintoma
+
+Ao rodar `quarkus:dev` (task "quarkus:dev" ou `./mvnw quarkus:dev`), o servidor não sobe e aparece no log:
+
+```
+Port 8080 seems to be in use by another process. Quarkus may already be running or the port is used by another application.
+Use 'ss -anop | grep 8080' or 'netstat -anop | grep 8080' to identify the process occupying the port.
+You can try to kill it with 'kill -9 <pid>'.
+```
+
+### Causa
+
+- Instância anterior do Quarkus não foi encerrada (terminal fechado sem parar o processo, ou live reload deixando processo órfão).
+- Outro processo (não Quarkus) usando a porta 8080.
+
+### Solução aplicada
+
+1. **Prevenção na task:** A task "quarkus:dev" em `.vscode/tasks.json` já foi ajustada para **liberar a porta 8080** antes de iniciar o Quarkus:
+   - **Linux/macOS:** identifica PIDs com `lsof -ti:8080`, envia `kill -9` se houver processo, aguarda 1 s e inicia o Maven.
+   - **Windows:** usa `netstat` + `taskkill` para encerrar o processo na 8080 e em seguida inicia o Maven.
+
+2. **Liberar a porta manualmente (sem iniciar o Quarkus):** Rodar a task **"Liberar porta 8080"** (Run Task no VS Code/Cursor).
+
+3. **Se outra aplicação precisar da 8080:** Não usar a task que mata a porta. Configurar o Quarkus para outra porta em `src/main/resources/application.properties`, por exemplo: `quarkus.http.port=8081`.
+
+### O que NÃO fazer
+
+- Sugerir apenas "mate o processo manualmente" sem mencionar a task existente ou a alteração já feita no `tasks.json`.
+- Criar uma nova task duplicada para liberar a porta; a task "quarkus:dev" já faz isso e existe a task "Liberar porta 8080" para uso pontual.
+
+---
+
+## Como adicionar novas entradas
+
+Ao resolver uma falha nova no projeto, adicione uma seção neste arquivo no formato:
+
+- **Título:** descrição curta do problema (ex.: "Erro X ao fazer Y").
+- **Sintoma:** mensagem de erro, log ou comportamento observado.
+- **Causa:** motivo conhecido (se houver).
+- **Solução aplicada:** passos ou alterações feitas (arquivos, comandos, config).
+- **O que NÃO fazer:** sugestões que já foram descartadas ou que conflitam com a solução adotada (opcional).
+
+Mantenha as entradas em ordem cronológica reversa (mais recente no topo) ou por frequência do problema.

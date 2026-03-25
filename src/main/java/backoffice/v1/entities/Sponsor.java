@@ -1,5 +1,7 @@
 package backoffice.v1.entities;
 
+import java.time.Instant;
+
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
 import backoffice.v1.entities.enums.SponsorPersonaEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
@@ -40,7 +42,7 @@ public class Sponsor extends BaseEntity {
   private SponsorEntityTypeEnum entityType;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @Column(nullable = true)
   private SponsorPersonaEnum persona;
 
   private String logoUrl;
@@ -55,4 +57,6 @@ public class Sponsor extends BaseEntity {
   @Builder.Default
   @Column(columnDefinition = "boolean default true", nullable = false)
   private boolean isActive = true;
+
+  private Instant lastActiveSponsorship;
 }

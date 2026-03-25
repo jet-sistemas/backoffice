@@ -2,6 +2,8 @@ package backoffice.common.requests;
 
 import java.util.List;
 
+import org.eclipse.microprofile.openapi.annotations.media.Schema;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
@@ -16,23 +18,40 @@ import backoffice.common.database.Pageable;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonInclude(Include.NON_EMPTY)
+@Schema(description = "Envelope padrão de todas as respostas HTTP")
 public class ResponseModel<T> {
   public static final String SUCESS = "OK";
   public static final String ERROR = "ERROR";
 
+  @Schema(description = "OK em sucesso ou ERROR em falha", enumeration = { "OK", "ERROR" })
   private String status;
+
+  @Schema(description = "Código HTTP da operação")
   private Integer statusCode;
+
+  @Schema(description = "Mensagem única de erro (quando aplicável)")
   private String message;
+
+  @Schema(description = "Lista de mensagens de erro ou validação (quando aplicável)")
   private List<String> messages;
 
   @JsonInclude(Include.ALWAYS)
+  @Schema(description = "Payload em sucesso; em erro costuma ser omitido ou null")
   private T data;
 
+  @Schema(description = "Total de elementos (listagens paginadas)")
   private Long totalElements;
+
+  @Schema(description = "Total de páginas (listagens paginadas)")
   private Integer totalPages;
+
+  @Schema(description = "Tamanho da página (listagens paginadas)")
   private Integer pageSize;
+
+  @Schema(description = "Página atual, 1-based (listagens paginadas)")
   private Integer currentPage;
 
+  @Schema(description = "Stack trace em ambiente de desenvolvimento (erros)")
   private List<String> stackTrace;
 
   public static <T> ResponseModel<T> success() {

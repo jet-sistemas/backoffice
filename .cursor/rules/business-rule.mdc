@@ -5,8 +5,8 @@ alwaysApply: false
 
 # Backoffice - Backend
 
-- versão 1.0.0
-- data atualização: 22/02/26
+- versão 1.1.0
+- data atualização: 10/03/26
 
 ## Objetivos Gerais - Desenvolvimento dos módulos restantes
 
@@ -57,6 +57,10 @@ Entusiastas e atletas que desejam fazer parte da associação. Eles terão acess
 - Benefícios Exclusivos: Descontos e vantagens em parceiros comerciais da associação.
 - Comunidade Ativa: Faça parte de uma comunidade apaixonada por esportes no sul do Piauí.
 
+#### Patrocinador Associado
+
+É um tipo de patrocinador que também possui direitos de associados (membro). Pode usufruir dos benefícios como qualquer outro membro.
+
 #### Adm's
 
 São os administradores da plataforma. Eles terão acesso ao backoffice e gerenciarão a plataforma como um todo.
@@ -67,38 +71,112 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
 
 - Deve ser capaz de logar na plataforma
   - Ao fazer login deve visualizar os patrocinadores ativos na plataforma
-- ADM deve ser capaz de criar um novo usuário (table_name `users`)
-  - Durante o cadastro, deve-se salvar as informações relativas aos `members` ou `sponsors` dependendo do `users.type`
-    - O Dto de criação deve refletir a necessidade de vir "member" ou "sponsor" com seus respectivos dados de acordo com o tipo de usuário criado
+
+- ADM deve ser capaz de criar um novo usuário via `POST /v1/admin/user`
+  - Os endpoints são centrados no **User** — o objeto `sponsor` é um filho opcional do payload/resposta
+  - O payload de criação segue o formato `UserWithSponsorCreateDTO`:
+    - `user` (obrigatório): dados do usuário (`email`, `name`, `document`, `code`, `type`)
+    - `sponsor` (obrigatório se `user.type = SPONSOR`): dados do patrocinador (`publicName`, `tier`, `entityType`, `persona`, etc.)
+  - Se `user.type = ADM`: somente dados do User são salvos, campo `sponsor` é ignorado
+  - Se `user.type = SPONSOR`: campo `sponsor` é obrigatório, validação de persona por entityType, User + Sponsor são criados
+  - Se `user.type = MEMBER` ou `SPONSOR_MEMBER`: **ainda não implementado** — retorna erro 400
   - Se `sponsors.entity_type = PERSON`, os dados da pessoa devem ser preenchidos na tabela de pessoas correspondente
-  - O campo/código de identificação gerado para o usuário deve ser único
+  - O campo `code` é obrigatório, deve conter exatamente 5 caracteres e deve ser único
     - Verificar se já existe um `code` com o mesmo valor
     - Campos marcados como único também devem ser validados e um erro personalizado deve ser retornado
-- ADM deve ser capaz de atualizar um _sponsor_
-  - Ao desativar um _sponsor_, os beneficios relacionados a ele devem ser omitidos
-  - Somente _sponsors_ ativos devem aparecer no site
-    - O endpoint de listagem deve conter filtro por `tier`
+  - Senha temporária `temp@1234` é atribuída automaticamente com hash BCrypt
+
+- ADM deve ser capaz de atualizar um _user_ via `PUT /v1/admin/user/{id}`
+  - O payload segue o formato `UserWithSponsorUpdateDTO`:
+    - Campos do User (`email`, `name`, `document`, `avatarUrl`) — todos opcionais (update parcial)
+    - `sponsor` (opcional): campos parciais do patrocinador se user.type for SPONSOR
+  - Se user.type é SPONSOR/SPONSOR_MEMBER e `sponsor` está presente no payload: atualiza também dados do sponsor
+  - `avatar_url` deve conter somente a referência ao R2
+  - O bucket do R2 se chamará: `backoffice/dev/users/avatar` e `backoffice/prod/users/avatar`
+  - O `user.type` segue a regra de negócio que:
+    - Somente um usuário ADM pode mudar a permissão de um user não ADM para ADM
+    - Somente ADM's podem gerenciar usuários
+    - Caso ADM atualize um `sponsor` para `member` (não implementado ainda)
+      - Deve-se inativar o registro na tabela sponsor bem como todos os benefícios atrelados a ele
+      - Cadastrar se já não existir dados relacionado a `member`
+      - Se for um `member` SUBSCRIBER deverá informar os dados relativos a `subscriber_member`
+      - Se for um `member` SPONSORED deverá informar os dados relativos a `sponsored_member`
+    - Caso ADM atualize um `member` para `sponsor` (não implementado ainda)
+      - Deve-se inativar o registro em `member`
+      - Cadastrar se já não existir dados relacionado a `sponsor`
+        - Aplicar a lógica entre `entity_type` e o `persona` descrito neste mesmo documento
+    - Caso ADM atualize um `member` ou `sponsor` para `sponsor_member` (não implementado ainda)
+      - O código deve ser inclusivo: Se for member, o usuário atualizado deve constar com registro ativo em sponsor
+      - O código deve ser inclusivo: Se for sponsor, o usuário atualizado deve constar com registro ativo em member, bem como `subscriber_member` ou `sponsored_member`
+
+- ADM deve ser capaz de listar usuários via `GET /v1/admin/user`
+  - Retorna todos os usuários com dados de sponsor como objeto filho quando aplicável
+  - Filtros disponíveis via query params: `type` (UserTypeEnum), `tier` (SponsorTierEnum) e `isActive` (Boolean)
+    - `isActive=true`: retorna apenas usuários com `isAccountActive = true`
+    - `isActive=false`: retorna apenas usuários com `isAccountActive = false`
+    - Sem o parâmetro: retorna todos os usuários
+  - Paginação via `page` e `size`
+  - Ao desativar um _sponsor_, os benefícios relacionados a ele devem ser omitidos
   - Ao desativar um _sponsor_, o campo `last_active_sponsorship` deve ser preenchido com a data
-  - ADM deve ser capaz de atualizar os campos do _sponsors_
-    - As logos devem ser salvas no R2 da cloudflare e somente o path do arquivo estático salvo no banco de dados
-      - Salvar no bucket chamado: `sponsors_logo`
-- ADM deve ser capaz de cadastrar benefícios
+  - As logos devem ser salvas no R2 da cloudflare e somente o path do arquivo estático salvo no banco de dados
+    - Salvar no bucket chamado: `backoffice/dev/sponsors/logo` e `backoffice/prod/sponsors/logo`
+
+- ADM deve ser capaz de desativar (soft delete) um usuário via `PATCH /v1/admin/user/{id}/deactivate`
+  - A desativação é **lógica** — o registro permanece no banco
+  - `user.isAccountActive` é definido como `false`
+  - Se o usuário for `SPONSOR` ou `SPONSOR_MEMBER`:
+    - `sponsor.isActive` é definido como `false`
+    - `sponsor.lastActiveSponsorship` é preenchido com a data/hora da desativação
+    - Todos os `benefits` vinculados ao sponsor são desativados (`benefits.isActive = false`)
+  - Usuários desativados não conseguem realizar login (`isAccountActive = false`)
+
+- ADM deve ser capaz de excluir (hard delete) um usuário via `DELETE /v1/admin/user/{id}`
+  - A exclusão é **física** — o registro é removido permanentemente do banco
+  - Efeito em cascata:
+    - Se o usuário for `SPONSOR` ou `SPONSOR_MEMBER`:
+      - Todos os `benefits` vinculados ao sponsor são excluídos
+      - O registro `sponsor` é excluído
+    - O registro `user` é excluído
+  - **Atenção**: Esta operação é irreversível
+
+- **Formato de resposta**: o retorno sempre parte do User com objeto filho `sponsor` (quando aplicável)
+  - Exemplo: `{ id, email, name, document, code, type, sponsor: { id, publicName, tier, ... } }`
+
+- ADM deve ser capaz de gerenciar benefícios (CRUD completo via `/v1/admin/benefit`)
   - Benefícios podem ser gerais (apenas associação) ou vinculados a um `sponsor`
   - Benefícios vinculados a `sponsor` só devem ser exibidos se o patrocinador estiver ativo
+  - `POST /v1/admin/benefit` — Criar benefício
+    - Payload: `BenefitCreateDTO` (`name` obrigatório, `description`, `address`, `sponsorId` opcional)
+    - Se `sponsorId` informado, valida se o sponsor existe; caso contrário retorna 404
+    - Retorna `BenefitDTO` com `SponsorMinDTO` embutido quando vinculado
+  - `PUT /v1/admin/benefit/{id}` — Atualizar benefício
+    - Payload: `BenefitUpdateDTO` (todos os campos opcionais — update parcial)
+    - `sponsorId` permite vincular/desvincular sponsor; se informado, valida existência
+  - `GET /v1/admin/benefit/{id}` — Buscar benefício por ID
+  - `GET /v1/admin/benefit` — Listar benefícios com paginação
+    - Filtros: `sponsorId` (Long), `isActive` (Boolean)
+    - Paginação: `page`, `size`
+  - `PATCH /v1/admin/benefit/{id}/deactivate` — Desativar benefício (soft delete, `isActive = false`)
+  - `DELETE /v1/admin/benefit/{id}` — Excluir benefício (hard delete, irreversível)
+
 - ADM deve ser capaz de gerir patrocinadores
   - Criar, editar e inativar patrocinadores
   - Visualizar os benefícios associados a cada patrocinador
   - Visualizar o histórico de validações realizadas por um patrocinador (check-ins)
+
 - ADM deve ser capaz de gerir membros
   - Criar, editar e inativar membros
   - Visualizar o status atual da assinatura do membro (ATIVO, ATRASADO, DESATIVADO, PATROCINADO)
   - Visualizar o histórico de check-ins realizados pelo membro
+
 - Fluxo de relacionamento patrocinador ↔ membro
   - Cada vez que um patrocinador validar um membro, deve-se ser criado um registro de log em `sponsors_member_checkin`
+
 - Regras de assinatura (membro assinante)
   - O valor padrão da mensalidade deve ser **R$ 20,00**, permitindo inserção inicial diferente OU alteração posterior pelo ADM
   - O dia de pagamento da mensalidade deve estar entre **1** e **31**
   - A data da próxima cobrança deve ser calculada automaticamente mesmo em meses em que o dia escolhido não exista (por exemplo, dia 31)
+
 - Regras de acesso do usuário
   - O acesso pela área logada só deve ser permitido se `is_account_active = true`
   - Usuários com `is_account_active = false` não devem conseguir realizar login
@@ -132,7 +210,7 @@ São os administradores da plataforma. Eles terão acesso ao backoffice e gerenc
     - `ADM` → apenas acesso de administração (pode não ter `Sponsor`/`Member` vinculado).
     - `SPONSOR` → deve existir um registro em `sponsors` vinculado ao mesmo `User`.
     - `MEMBER` → deve existir um registro em `members` vinculado ao mesmo `User`.
-    - `SPONSOR_MEMBER` → **ATENÇÃO – POSSÍVEL CONFLITO**: o DER prevê essa possibilidade, mas as regras de negócio ainda não definem se haverá sempre dois registros (`Sponsor` + `Member`) compartilhando o mesmo `User` ou outra modelagem; essa decisão deve ser explicitada antes de implementar.
+    - `SPONSOR_MEMBER` → Deve existir registros em `sponsors` e `members` vinculado ao mesmo `User`.
 
 - **Members, tipos e vínculos**
   - `Member.type = SUBSCRIBER`:
