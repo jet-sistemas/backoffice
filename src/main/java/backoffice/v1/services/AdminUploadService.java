@@ -208,7 +208,7 @@ public class AdminUploadService {
   private String buildKeyPrefix(UploadTargetEnum target, Long entityId) {
     return switch (target) {
       case USER -> keyEnvPrefix + "/users/avatar/" + entityId + "/";
-      case SPONSOR -> keyEnvPrefix + "/sponsor/logo/" + entityId + "/";
+      case SPONSOR -> keyEnvPrefix + "/sponsors/logo/" + entityId + "/";
     };
   }
 

@@ -92,7 +92,7 @@ O projeto utiliza **Cloudflare R2** como object storage para arquivos estáticos
 | Domínio | Dev | Prod |
 |---------|-----|------|
 | Avatar de usuário | `backoffice/dev/users/avatar` | `backoffice/prod/users/avatar` |
-| Logo de patrocinador | `backoffice/dev/sponsor/logo` | `backoffice/prod/sponsor/logo` |
+| Logo de patrocinador | `backoffice/dev/sponsors/logo` | `backoffice/prod/sponsors/logo` |
 
 ### Regras
 

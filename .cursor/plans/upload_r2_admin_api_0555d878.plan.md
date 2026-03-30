@@ -55,7 +55,7 @@ sequenceDiagram
   - Endpoint R2 (`https://<account_id>.r2.cloudflarestorage.com`), região `auto`, access key, secret key, **nome do bucket** (um bucket único é o cenário mais simples).
   - `**storage.cdn.public-base-url`**: base pública (Cloudflare CDN) **sem** barra final — usada só na resposta da API.
   - `**storage.upload.max-bytes`** (ex.: 5MB), `**storage.upload.sign-ttl-seconds`** (ex.: 300).
-  - **Prefixo lógico por ambiente** alinhado à tabela de buckets do architecture (ex.: `dev/users/avatar`, `dev/sponsor/logo` vs `prod/...`), de forma que a `objectKey` gravada no banco seja sempre relativa ao bucket e reproduza a convenção documentada.
+  - **Prefixo lógico por ambiente** alinhado à tabela de buckets do architecture (ex.: `dev/users/avatar`, `dev/sponsors/logo` vs `prod/...`), de forma que a `objectKey` gravada no banco seja sempre relativa ao bucket e reproduza a convenção documentada.
 
 **Segurança**: não commitar secrets; documentar variáveis esperadas apenas na resposta ao time (sem arquivo `.md` novo no repo, conforme regras do workspace).
 
@@ -71,7 +71,7 @@ sequenceDiagram
 Geração de chave no **init** (servidor): algo equivalente à demanda, adaptado aos prefixos Jet, por exemplo:
 
 - Avatar: `{prefix}/users/avatar/{userId}/{yyyy}/{MM}/{epoch}_{random}.{ext}`
-- Logo: `{prefix}/sponsor/logo/{sponsorId}/{yyyy}/{MM}/{epoch}_{random}.{ext}`
+- Logo: `{prefix}/sponsors/logo/{sponsorId}/{yyyy}/{MM}/{epoch}_{random}.{ext}`
 
 Extensão derivada de `contentType` (mapa fixo png/jpeg/webp), **não** do `fileName` cru (sanitização mínima: ignorar nome, só validar tamanho do campo se existir).
 
