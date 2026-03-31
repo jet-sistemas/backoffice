@@ -1,0 +1,66 @@
+---
+name: Regras de negócio - Contexto de domínio
+alwaysApply: false
+---
+
+# Backoffice - Backend
+
+- versão 1.1.0
+- data atualização: 10/03/26
+
+## Objetivos Gerais - Desenvolvimento dos módulos restantes
+
+### Módulo III - Gestão de Patrocinadores
+
+- Cadastro completo de patrocinadores
+- Gerenciamento de benefícios fornecidos aos associados
+- Exibição dos patrocinadores na plataforma como forma de publicidade
+
+### Módulo IV - Gestão de Associados
+
+- Cadastro e segmentação
+- Controle de mensalidades
+- Sinalização de vencimentos
+
+### Módulo V - Áreas logadas
+
+- Área de validação de associado para patrocinadores
+- Área do associado com visualização de dados, status e benefícios
+
+## Enciclopédia
+
+#### Associação Desportiva Artística e Cultural Joyce e Teatino
+
+É uma associação que deseja transformar vidas através do esporte. Possuem um time de vôlei e pretendem expandir a quantidade de esportes. Realizam campeonatos e ajudam jovens a realizar sonhos através do esforço esportivo, artístico e cultural. Formas de monetização incluem auxílio municipal, patrocínio de políticos e empresas privadas em troca de publicidade, entusiastas e atletas que se vinculam tornando-se associados com contribuição mensal.
+
+#### Parceiros
+
+Nomenclatura geral para se referir a todas as personas relacionadas a associação Jet. São eles: **Associados** e **Patrocinadores**.
+
+#### Patrocinadores
+
+Através de incentivo financeiro e benefícios cedidos aos associados, trocam o montante por publicidade. É possível se tornar um patrocinador de três tiers diferentes: Bronze, Prata ou Ouro. Sendo o último mais relevante, com maior espaço publicitário. Não cabe ao sistema a logística e discernimento para diferir os tiers, pois ficará a cargo do admin do sistema, bastando o backoffice poder identificar e classificar os tipos de patrocinadores, inclusive se o "acordo" está vigente ou não.
+
+Ao se tornar patrocinador terá acesso dependendo do tier:
+
+- Visibilidade em eventos: Sua marca exposta em todos os campeonatos e eventos esportivos.
+- Divulgações nas redes: Presença garantida em todas as publicações e redes sociais da associação.
+- Categorias Exclusivas: Escolha entre Ouro, Prata ou Bronze com benefícios diferenciados.
+- Destaque na Plataforma: Logo e informações da empresa em destaque no site oficial.
+
+#### Associados
+
+Entusiastas e atletas que desejam fazer parte da associação. Eles terão acesso a campeonatos, treinos e benefícios exclusivos dos assinantes como desconto e vantagens.
+
+- Treinos Regulares: Participe de treinos semanais de vôlei com orientação profissional.
+- Campeonatos: Acesso garantido a todos os campeonatos organizados pela associação.
+- Benefícios Exclusivos: Descontos e vantagens em parceiros comerciais da associação.
+- Comunidade Ativa: Faça parte de uma comunidade apaixonada por esportes no sul do Piauí.
+
+#### Patrocinador Associado
+
+É um tipo de patrocinador que também possui direitos de associados (membro). Pode usufruir dos benefícios como qualquer outro membro.
+
+#### Adm's
+
+São os administradores da plataforma. Eles terão acesso ao backoffice e gerenciarão a plataforma como um todo.

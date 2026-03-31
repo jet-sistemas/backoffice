@@ -1,0 +1,67 @@
+---
+name: Regras de negócio - Relacionamentos e invariantes
+alwaysApply: false
+---
+
+# Regras transversais de relacionamento
+
+## Fluxo patrocinador ↔ membro
+
+- Cada vez que um patrocinador validar um membro, deve-se ser criado um registro de log em `sponsors_member_checkin`.
+
+## Regras de assinatura (member assinante)
+
+- O valor padrão da mensalidade deve ser **R$ 20,00**, permitindo inserção inicial diferente ou alteração posterior pelo ADM.
+- O dia de pagamento da mensalidade deve estar entre **1** e **31**.
+- A data da próxima cobrança deve ser calculada automaticamente mesmo em meses em que o dia escolhido não exista (por exemplo, dia 31).
+
+## Regras de acesso do usuário
+
+- O acesso pela área logada só deve ser permitido se `is_account_active = true`.
+- Usuários com `is_account_active = false` não devem conseguir realizar login.
+
+## Relacionamentos entre parceiros (Adm's, Sponsors, Members)
+
+### User como raiz de parceiros
+
+- Todo `Sponsor` e todo `Member` deve estar vinculado a exatamente um `User` (via `user_id`), conforme o DER em `backoffice.dbml`.
+- O campo `users.type` indica se existirão registros em `sponsors`, `members` ou ambos:
+  - `ADM` -> apenas acesso de administração (pode não ter `Sponsor`/`Member` vinculado)
+  - `SPONSOR` -> deve existir um registro em `sponsors` vinculado ao mesmo `User`
+  - `MEMBER` -> deve existir um registro em `members` vinculado ao mesmo `User`
+  - `SPONSOR_MEMBER` -> deve existir registros em `sponsors` e `members` vinculado ao mesmo `User`
+
+### Members, tipos e vínculos
+
+- `Member.type = SUBSCRIBER`:
+  - Deve existir um registro correspondente em `subscriber_member` (configuração de cobrança) para o mesmo `member_id`.
+  - O status de cobrança em `subscriber_member.status` deve ser coerente com o status apresentado na área logada (ATIVO, ATRASADO, DESATIVADO).
+- `Member.type = SPONSORED`:
+  - Deve existir pelo menos um registro ativo em `sponsored_member` vinculado ao `Member`.
+  - Quando não houver nenhum patrocínio ativo, o `Member` não deve ser tratado como `SPONSORED` para fins de benefícios que dependem de patrocínio da associação.
+
+### Benefícios e patrocinadores
+
+- Se `benefits.sponsor_id` estiver preenchido:
+  - O benefício é considerado patrocinado por aquele `Sponsor`.
+  - Se o `Sponsor` estiver inativo (`is_active = false`), seus benefícios não devem ser exibidos/publicados para novos usos, mas podem ser mantidos para histórico.
+- Se `benefits.sponsor_id` for nulo:
+  - O benefício é geral (vinculado apenas à associação) e não depende de patrocinador específico.
+
+### Check-in patrocinador ↔ associado (`sponsors_members_checkin`)
+
+- Cada registro em `sponsors_members_checkin` representa um evento de validação entre um `Sponsor` e um `Member` em uma data/hora específica.
+- A combinação `(sponsor_id, member_id)` deve sempre ser coerente com o estado atual:
+  - Podem existir múltiplos registros ao longo do tempo.
+  - Sempre que um `member` passar por uma validação com um `sponsor` (parceiro), um registro nesta tabela deverá ser criado para histórico, se o `member` foi validado ou não.
+
+### Desativação e efeitos em cadeia
+
+- Ao desativar um `Sponsor`:
+  - Seus benefícios (`benefits` com `sponsor_id` correspondente) deixam de ser exibidos, independentemente de `benefits.is_active`.
+  - Check-ins históricos continuam válidos apenas para consulta, não para validações futuras.
+- Ao mudar o tipo de um `Member` (`SUBSCRIBER` ↔ `SPONSORED`):
+  - O registro deste membro em `subscriber_member` deve conter o `status` = `INACTIVE`.
+  - Um `subscriber_member` com `status = INACTIVE` significa ou que o membro foi desligado administrativamente por algum motivo ou que ele se tornou um membro patrocinado.
+  - A dinâmica entre `sponsored_member.is_active` e `subscriber_member.status` deve suprir todos os casos.
+  - Não é possível ser um `member` assinante e patrocinado ao mesmo tempo.
