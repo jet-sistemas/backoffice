@@ -11,6 +11,7 @@ Use este índice para carregar apenas o escopo necessário da demanda.
 
 - `contexto-dominio.mdc`: objetivos gerais e enciclopédia do negócio
 - `adm-usuarios-beneficios.mdc`: regras de ADM para usuários, patrocinadores e benefícios
+- `api-publica-patrocinadores.mdc`: rota pública `GET /v1/public/sponsors` (listagem de patrocinadores ativos)
 - `area-patrocinador.mdc`: casos de uso da área logada de patrocinador
 - `area-membro.mdc`: casos de uso da área logada de membro
 - `relacionamentos-invariantes.mdc`: invariantes entre user/sponsor/member e efeitos em cadeia
