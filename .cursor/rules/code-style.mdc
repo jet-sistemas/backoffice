@@ -7,6 +7,8 @@ alwaysApply: true
 
 ## Stack Tecnológica
 
+Lista canónica da stack — atualizar **apenas aqui** ao mudar versões (Java, Quarkus, etc.).
+
 - **Java 25** + **Quarkus 3.31.4**
 - **Hibernate ORM** com **Panache** (Active Record + Repository Pattern)
 - **JAX-RS** (RESTEasy) para endpoints REST

@@ -28,11 +28,27 @@ import jakarta.ws.rs.core.SecurityContext;
 @Consumes(MediaType.APPLICATION_JSON)
 @Tag(name = "Auth", description = "Autenticação e dados do usuário logado")
 @APIResponses({
-		@APIResponse(responseCode = "400", description = "Validação (Bean Validation), requisição inválida (BadRequestException) ou regra de negócio com HTTP 400 (BusinessException)", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeErrorDTO.class))),
-		@APIResponse(responseCode = "403", description = "Acesso negado (ForbiddenException)", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeErrorDTO.class))),
-		@APIResponse(responseCode = "404", description = "Recurso não encontrado (NotFoundException)", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeErrorDTO.class))),
-		@APIResponse(responseCode = "409", description = "Conflito (ConflictException)", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeErrorDTO.class))),
-		@APIResponse(responseCode = "500", description = "Erro interno ou exceção não mapeada; corpo com mensagem padronizada e, em desenvolvimento, `stackTrace`", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeErrorDTO.class))),
+// @APIResponse(responseCode = "400", description = "Validação (Bean
+// Validation), requisição inválida (BadRequestException) ou regra de negócio
+// com HTTP 400 (BusinessException)", content = @Content(mediaType =
+// MediaType.APPLICATION_JSON, schema = @Schema(implementation =
+// EnvelopeErrorDTO.class))),
+// @APIResponse(responseCode = "403", description = "Acesso negado
+// (ForbiddenException)", content = @Content(mediaType =
+// MediaType.APPLICATION_JSON, schema = @Schema(implementation =
+// EnvelopeErrorDTO.class))),
+// @APIResponse(responseCode = "404", description = "Recurso não encontrado
+// (NotFoundException)", content = @Content(mediaType =
+// MediaType.APPLICATION_JSON, schema = @Schema(implementation =
+// EnvelopeErrorDTO.class))),
+// @APIResponse(responseCode = "409", description = "Conflito
+// (ConflictException)", content = @Content(mediaType =
+// MediaType.APPLICATION_JSON, schema = @Schema(implementation =
+// EnvelopeErrorDTO.class))),
+// @APIResponse(responseCode = "500", description = "Erro interno ou exceção não
+// mapeada; corpo com mensagem padronizada e, em desenvolvimento, `stackTrace`",
+// content = @Content(mediaType = MediaType.APPLICATION_JSON, schema =
+// @Schema(implementation = EnvelopeErrorDTO.class))),
 })
 public interface AuthApi {
 

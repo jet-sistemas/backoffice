@@ -3,6 +3,7 @@ package backoffice.v1.resources;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -368,6 +369,7 @@ class AdminUploadResourceTest {
           .post(BASE + "/init")
           .then()
           .statusCode(200)
+          .body("data.objectKey", containsString("/sponsors/logo/"))
           .extract()
           .path("data.objectKey");
 

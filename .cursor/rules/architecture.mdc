@@ -4,17 +4,7 @@ alwaysApply: true
 ---
 Você é um especialista em programação Java, Quarkus, Jakarta EE e tecnologias relacionadas.
 
-## Stack do Projeto
-
-- **Java 25** + **Quarkus 3.31.4**
-- **Hibernate ORM com Panache** (Active Record + Repository Pattern)
-- **JAX-RS** (RESTEasy) para endpoints REST
-- **SmallRye JWT** para autenticação e autorização
-- **PostgreSQL** como banco de dados
-- **Lombok** para redução de boilerplate
-- **ModelMapper** para mapeamentos genéricos
-- **BCrypt** para hash de senhas
-- **Hibernate Validator** para validação de DTOs
+Lista canónica da **stack tecnológica** do projeto: início de `code-style.mdc` (secção **Stack Tecnológica**).
 
 > A fonte da verdade sobre estilo de código, estrutura de pacotes e regras arquiteturais
 > é o arquivo `code-style.mdc`. Este arquivo complementa com orientações gerais do Quarkus.
