@@ -82,6 +82,14 @@ public class SponsorService {
     });
   }
 
+  public void activateByUserId(Long userId) {
+    findByUserId(userId).ifPresent(sponsor -> {
+      sponsor.setActive(true);
+      sponsorRepository.persistAndFlush(sponsor);
+      benefitRepository.activateBySponsorId(sponsor.getId());
+    });
+  }
+
   public void deleteByUserId(Long userId) {
     findByUserId(userId).ifPresent(sponsor -> {
       benefitRepository.deleteBySponsorId(sponsor.getId());

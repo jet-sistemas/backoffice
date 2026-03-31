@@ -96,6 +96,19 @@ public class AdminService {
   }
 
   @Transactional
+  public void activateUser(Long userId) {
+    User user = userService.findById(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
+
+    user.setAccountActive(true);
+    userService.persistAndFlush(user);
+
+    if (isSponsorType(user.getType())) {
+      sponsorService.activateByUserId(userId);
+    }
+  }
+
+  @Transactional
   public void deleteUser(Long userId) {
     User user = userService.findById(userId)
         .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));

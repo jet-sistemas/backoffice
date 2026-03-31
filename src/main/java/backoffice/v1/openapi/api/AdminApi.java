@@ -91,6 +91,15 @@ public interface AdminApi {
 	})
 	Response deactivateUser(@PathParam("id") Long id);
 
+	@PATCH
+	@Path("/user/{id}/activate")
+	@Tag(name = "Admin - Usuários")
+	@Operation(summary = "Ativar usuário", description = "Reativa a conta (`isAccountActive = true`). Se o tipo for SPONSOR ou SPONSOR_MEMBER, reativa o registro de patrocinador e os benefícios vinculados a esse patrocinador.")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Usuário ativado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeVoid.class)))
+	})
+	Response activateUser(@PathParam("id") Long id);
+
 	@DELETE
 	@Path("/user/{id}")
 	@Tag(name = "Admin - Usuários")

@@ -16,6 +16,10 @@ public class BenefitRepository implements PanacheRepositoryBase<Benefit, Long> {
     return update("isActive = false where sponsor.id = ?1", sponsorId);
   }
 
+  public int activateBySponsorId(Long sponsorId) {
+    return update("isActive = true where sponsor.id = ?1", sponsorId);
+  }
+
   public long deleteBySponsorId(Long sponsorId) {
     return delete("sponsor.id = ?1", sponsorId);
   }
