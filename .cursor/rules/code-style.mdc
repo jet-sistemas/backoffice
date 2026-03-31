@@ -281,6 +281,20 @@ public class SponsorService {
 }
 ```
 
+#### 3.1. Propriedade do repositório por Service (antipadrão)
+
+Cada `*Repository` Panache deve ser injetado e usado **somente** pelo `*Service` do mesmo domínio
+agregado — por exemplo, apenas `UserService` usa `UserRepository` e apenas `SponsorService` usa
+`SponsorRepository`. Outros services (`AdminService`, `AdminUploadService`, `AuthService`, orquestradores,
+etc.) compõem o fluxo chamando esse service e **não** importam nem injetam repositórios de outro domínio.
+
+- **Correto**: `AdminService` chama `userService.listUsers(...)`, `userService.persistAndFlush(user)`,
+  `userService.delete(user)` quando precisa de persistência ou consultas de `User`; `AdminUploadService`
+  usa `sponsorService.findById(...)` em vez de `SponsorRepository`.
+- **Antipadrão**: `AdminService` com `@Inject UserRepository` ou `AdminUploadService` com
+  `@Inject SponsorRepository` — quebra o encapsulamento da persistência desse agregado fora do
+  `*Service` correspondente.
+
 ### 4. Conversão DTO → Entity acontece na camada de Service
 
 A transformação de dados de entrada (DTO) para entidade de persistência é responsabilidade do

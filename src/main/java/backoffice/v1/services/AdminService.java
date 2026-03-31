@@ -22,7 +22,6 @@ import backoffice.v1.entities.Sponsor;
 import backoffice.v1.entities.User;
 import backoffice.v1.entities.enums.SponsorTierEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
-import backoffice.v1.repositories.UserRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -37,9 +36,6 @@ public class AdminService {
 
   @Inject
   private BenefitService benefitService;
-
-  @Inject
-  private UserRepository userRepository;
 
   @Transactional
   public UserWithSponsorDTO createUser(UserWithSponsorCreateDTO dto) {
@@ -71,7 +67,7 @@ public class AdminService {
     userService.validateUniqueFieldsForUpdate(userId, dto.getEmail(), dto.getDocument());
 
     UserMapper.applyUpdate(dto, user);
-    userRepository.persistAndFlush(user);
+    userService.persistAndFlush(user);
 
     Sponsor sponsor = null;
     if (isSponsorType(user.getType())) {
@@ -92,7 +88,7 @@ public class AdminService {
         .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
 
     user.setAccountActive(false);
-    userRepository.persistAndFlush(user);
+    userService.persistAndFlush(user);
 
     if (isSponsorType(user.getType())) {
       sponsorService.deactivateByUserId(userId);
@@ -108,7 +104,7 @@ public class AdminService {
       sponsorService.deleteByUserId(userId);
     }
 
-    userRepository.delete(user);
+    userService.delete(user);
   }
 
   public UserWithSponsorDTO findUserById(Long userId) {
@@ -123,7 +119,7 @@ public class AdminService {
   }
 
   public Pageable<UserWithSponsorDTO> listUsers(UserTypeEnum type, SponsorTierEnum tier, Boolean isActive, PageDTO pageDTO) {
-    Pageable<User> pageable = userRepository.findAllPaginated(type, tier, isActive, pageDTO);
+    Pageable<User> pageable = userService.listUsers(type, tier, isActive, pageDTO);
 
     List<Long> userIds = pageable.getData().stream()
         .filter(u -> isSponsorType(u.getType()))

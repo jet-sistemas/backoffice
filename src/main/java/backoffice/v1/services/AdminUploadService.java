@@ -27,8 +27,6 @@ import backoffice.v1.dtos.upload.UploadInitResponseDTO;
 import backoffice.v1.dtos.upload.UploadTargetEnum;
 import backoffice.v1.entities.Sponsor;
 import backoffice.v1.entities.User;
-import backoffice.v1.repositories.SponsorRepository;
-import backoffice.v1.repositories.UserRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -50,10 +48,10 @@ public class AdminUploadService {
   UploadRateLimiter uploadRateLimiter;
 
   @Inject
-  UserRepository userRepository;
+  UserService userService;
 
   @Inject
-  SponsorRepository sponsorRepository;
+  SponsorService sponsorService;
 
   @Inject
   @ConfigProperty(name = "backoffice.storage.key-env-prefix")
@@ -121,13 +119,13 @@ public class AdminUploadService {
     String previousKey = null;
     switch (dto.getEntity()) {
       case USER -> {
-        User user = userRepository.findByIdOptional(dto.getEntityId())
+        User user = userService.findById(dto.getEntityId())
             .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
         previousKey = user.getAvatarUrl();
         user.setAvatarUrl(dto.getObjectKey());
       }
       case SPONSOR -> {
-        Sponsor sponsor = sponsorRepository.findByIdOptional(dto.getEntityId())
+        Sponsor sponsor = sponsorService.findById(dto.getEntityId())
             .orElseThrow(() -> new NotFoundException(MessageErrorEnum.SPONSOR_NOT_FOUND.getMessage()));
         previousKey = sponsor.getLogoUrl();
         sponsor.setLogoUrl(dto.getObjectKey());
@@ -158,10 +156,10 @@ public class AdminUploadService {
     }
 
     String current = switch (dto.getEntity()) {
-      case USER -> userRepository.findByIdOptional(dto.getEntityId())
+      case USER -> userService.findById(dto.getEntityId())
           .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()))
           .getAvatarUrl();
-      case SPONSOR -> sponsorRepository.findByIdOptional(dto.getEntityId())
+      case SPONSOR -> sponsorService.findById(dto.getEntityId())
           .orElseThrow(() -> new NotFoundException(MessageErrorEnum.SPONSOR_NOT_FOUND.getMessage()))
           .getLogoUrl();
     };
@@ -177,11 +175,11 @@ public class AdminUploadService {
 
     switch (dto.getEntity()) {
       case USER -> {
-        User user = userRepository.findByIdOptional(dto.getEntityId()).orElseThrow();
+        User user = userService.findById(dto.getEntityId()).orElseThrow();
         user.setAvatarUrl(null);
       }
       case SPONSOR -> {
-        Sponsor sponsor = sponsorRepository.findByIdOptional(dto.getEntityId()).orElseThrow();
+        Sponsor sponsor = sponsorService.findById(dto.getEntityId()).orElseThrow();
         sponsor.setLogoUrl(null);
       }
     }
@@ -198,9 +196,9 @@ public class AdminUploadService {
 
   private void resolveEntity(UploadTargetEnum target, Long entityId) {
     switch (target) {
-      case USER -> userRepository.findByIdOptional(entityId)
+      case USER -> userService.findById(entityId)
           .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
-      case SPONSOR -> sponsorRepository.findByIdOptional(entityId)
+      case SPONSOR -> sponsorService.findById(entityId)
           .orElseThrow(() -> new NotFoundException(MessageErrorEnum.SPONSOR_NOT_FOUND.getMessage()));
     }
   }

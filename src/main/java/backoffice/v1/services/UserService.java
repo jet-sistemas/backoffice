@@ -2,10 +2,14 @@ package backoffice.v1.services;
 
 import java.util.Optional;
 
+import backoffice.common.database.Pageable;
 import backoffice.common.exceptions.customs.ConflictException;
 import backoffice.common.mappers.UserMapper;
+import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.user.UserCreateDTO;
 import backoffice.v1.entities.User;
+import backoffice.v1.entities.enums.SponsorTierEnum;
+import backoffice.v1.entities.enums.UserTypeEnum;
 import backoffice.v1.repositories.UserRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -53,5 +57,17 @@ public class UserService {
     userRepository.persistAndFlush(user);
 
     return user;
+  }
+
+  public Pageable<User> listUsers(UserTypeEnum type, SponsorTierEnum tier, Boolean isActive, PageDTO pageDTO) {
+    return userRepository.findAllPaginated(type, tier, isActive, pageDTO);
+  }
+
+  public void persistAndFlush(User user) {
+    userRepository.persistAndFlush(user);
+  }
+
+  public void delete(User user) {
+    userRepository.delete(user);
   }
 }
