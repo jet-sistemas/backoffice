@@ -40,11 +40,27 @@ import jakarta.ws.rs.core.Response;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @APIResponses({
-		@APIResponse(responseCode = "400", description = "Validação (Bean Validation), requisição inválida (BadRequestException) ou regra de negócio com HTTP 400 (BusinessException)", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeErrorDTO.class))),
-		@APIResponse(responseCode = "403", description = "Acesso negado (ForbiddenException)", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeErrorDTO.class))),
-		@APIResponse(responseCode = "404", description = "Recurso não encontrado (NotFoundException)", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeErrorDTO.class))),
-		@APIResponse(responseCode = "409", description = "Conflito (ConflictException)", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeErrorDTO.class))),
-		@APIResponse(responseCode = "500", description = "Erro interno ou exceção não mapeada; corpo com mensagem padronizada e, em desenvolvimento, `stackTrace`", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeErrorDTO.class))),
+// @APIResponse(responseCode = "400", description = "Validação (Bean
+// Validation), requisição inválida (BadRequestException) ou regra de negócio
+// com HTTP 400 (BusinessException)", content = @Content(mediaType =
+// MediaType.APPLICATION_JSON, schema = @Schema(implementation =
+// EnvelopeErrorDTO.class))),
+// @APIResponse(responseCode = "403", description = "Acesso negado
+// (ForbiddenException)", content = @Content(mediaType =
+// MediaType.APPLICATION_JSON, schema = @Schema(implementation =
+// EnvelopeErrorDTO.class))),
+// @APIResponse(responseCode = "404", description = "Recurso não encontrado
+// (NotFoundException)", content = @Content(mediaType =
+// MediaType.APPLICATION_JSON, schema = @Schema(implementation =
+// EnvelopeErrorDTO.class))),
+// @APIResponse(responseCode = "409", description = "Conflito
+// (ConflictException)", content = @Content(mediaType =
+// MediaType.APPLICATION_JSON, schema = @Schema(implementation =
+// EnvelopeErrorDTO.class))),
+// @APIResponse(responseCode = "500", description = "Erro interno ou exceção não
+// mapeada; corpo com mensagem padronizada e, em desenvolvimento, `stackTrace`",
+// content = @Content(mediaType = MediaType.APPLICATION_JSON, schema =
+// @Schema(implementation = EnvelopeErrorDTO.class))),
 })
 public interface AdminApi {
 
@@ -75,6 +91,15 @@ public interface AdminApi {
 	})
 	Response deactivateUser(@PathParam("id") Long id);
 
+	@PATCH
+	@Path("/user/{id}/activate")
+	@Tag(name = "Admin - Usuários")
+	@Operation(summary = "Ativar usuário", description = "Reativa a conta (`isAccountActive = true`). Se o tipo for SPONSOR ou SPONSOR_MEMBER, reativa o registro de patrocinador e os benefícios vinculados a esse patrocinador.")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Usuário ativado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeVoid.class)))
+	})
+	Response activateUser(@PathParam("id") Long id);
+
 	@DELETE
 	@Path("/user/{id}")
 	@Tag(name = "Admin - Usuários")
@@ -96,7 +121,7 @@ public interface AdminApi {
 	@GET
 	@Path("/user")
 	@Tag(name = "Admin - Usuários")
-	@Operation(summary = "Listar usuários", description = "Listagem paginada com filtros por tipo, tier e status de ativação.")
+	@Operation(summary = "Listar usuários", description = "Listagem paginada com filtros por tipo, tier, tipo de entidade e persona do patrocinador (persona aplicada só quando entityType = PERSON), e status de ativação.")
 	@APIResponses({
 			@APIResponse(responseCode = "200", description = "Lista paginada de usuários", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeUserWithSponsorListDTO.class)))
 	})

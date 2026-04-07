@@ -1,10 +1,12 @@
 ---
 name: Histórico de falhas
-description: Falhas conhecidas do projeto e como resolvê-las — consultar antes de sugerir soluções para erros similares
+description: Runbook canónico (sintomas, causas, soluções). Para quando invocar esta rule ou a skill, ver skill `historico-falhas` em `.cursor/skills/historico-falhas/SKILL.md`.
 alwaysApply: false
 ---
 
 # Histórico de falhas e resoluções
+
+**Conteúdo canónico** do runbook: sintomas, causas e passos detalhados mantêm-se **neste** `.mdc`. Descoberta e gatilhos para agentes: skill **`historico-falhas`** (`.cursor/skills/historico-falhas/SKILL.md`).
 
 Este documento registra falhas já encontradas no projeto e as soluções aplicadas. **Agentes de IA: consulte-o ao diagnosticar erros parecidos e priorize as soluções aqui descritas.**
 

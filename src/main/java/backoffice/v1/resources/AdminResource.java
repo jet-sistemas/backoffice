@@ -44,6 +44,13 @@ public class AdminResource implements AdminApi {
   }
 
   @Override
+  public Response activateUser(Long id) {
+    service.activateUser(id);
+    var response = ResponseModel.success(Status.OK.getStatusCode());
+    return Response.ok(response).build();
+  }
+
+  @Override
   public Response deleteUser(Long id) {
     service.deleteUser(id);
     var response = ResponseModel.success(Status.OK.getStatusCode());
@@ -62,6 +69,8 @@ public class AdminResource implements AdminApi {
     Pageable<UserWithSponsorDTO> result = service.listUsers(
         query.resolveType(),
         query.resolveTier(),
+        query.resolveEntityType(),
+        query.resolvePersona(),
         query.getIsActive(),
         PageDTO.of(query.getPage(), query.getSize()));
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);

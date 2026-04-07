@@ -7,6 +7,8 @@ alwaysApply: true
 
 ## Stack Tecnológica
 
+Lista canónica da stack — atualizar **apenas aqui** ao mudar versões (Java, Quarkus, etc.).
+
 - **Java 25** + **Quarkus 3.31.4**
 - **Hibernate ORM** com **Panache** (Active Record + Repository Pattern)
 - **JAX-RS** (RESTEasy) para endpoints REST
@@ -29,7 +31,7 @@ src/main/java/backoffice/
 │   ├── beans/                       # Beans de inicialização do Quarkus
 │   ├── config/                      # Configuração de beans CDI (ModelMapper, etc.)
 │   ├── database/                    # Abstrações de banco (Pageable) e seeds
-│   ├── exceptions/                  # Tratamento global de erros e exceções customizadas
+│   ├── exceptions/                  # Mappers JAX-RS de erro, validação REST e exceções customizadas
 │   │   └── customs/                 # Exceções customizadas (BadRequest, NotFound, etc.)
 │   ├── mappers/                     # Conversão Entity ↔ DTO (por domínio)
 │   ├── requests/                    # Modelo padrão de resposta HTTP (ResponseModel)
@@ -89,9 +91,12 @@ paginação diretamente do Panache.
 
 Tratamento centralizado de erros:
 
-- **`GlobalExceptionMapper`** — `@Provider` que intercepta qualquer `Throwable` e converte em
-  `ResponseModel` padronizado. Trata `ConstraintViolationException` (validação), exceções
-  customizadas (`BusinessException`, `NotFoundException`, etc.) e erros inesperados.
+- **`RestValidationExceptionMapper`** — `@Provider` com prioridade JAX-RS acima do mapper padrão do
+  Quarkus; intercepta `ResteasyReactiveViolationException` (Bean Validation na borda REST, ex. `@Valid`
+  em parâmetros) e responde **400** com `ResponseModel` e lista em `messages`.
+- **`GlobalExceptionMapper`** — `@Provider` que intercepta `Throwable` restante e converte em
+  `ResponseModel` padronizado: exceções customizadas (`BusinessException`, `NotFoundException`, etc.)
+  e fallback para erros inesperados (**não** trata violações de entrada já cobertas pelo mapper de validação).
 - **`MessageErrorEnum`** — Enum com todas as mensagens de erro do sistema centralizadas em
   português. Garante consistência e facilita manutenção.
 - **`customs/`** — Exceções customizadas com status HTTP específico:
@@ -276,6 +281,20 @@ public class SponsorService {
 }
 ```
 
+#### 3.1. Propriedade do repositório por Service (antipadrão)
+
+Cada `*Repository` Panache deve ser injetado e usado **somente** pelo `*Service` do mesmo domínio
+agregado — por exemplo, apenas `UserService` usa `UserRepository` e apenas `SponsorService` usa
+`SponsorRepository`. Outros services (`AdminService`, `AdminUploadService`, `AuthService`, orquestradores,
+etc.) compõem o fluxo chamando esse service e **não** importam nem injetam repositórios de outro domínio.
+
+- **Correto**: `AdminService` chama `userService.listUsers(...)`, `userService.persistAndFlush(user)`,
+  `userService.delete(user)` quando precisa de persistência ou consultas de `User`; `AdminUploadService`
+  usa `sponsorService.findById(...)` em vez de `SponsorRepository`.
+- **Antipadrão**: `AdminService` com `@Inject UserRepository` ou `AdminUploadService` com
+  `@Inject SponsorRepository` — quebra o encapsulamento da persistência desse agregado fora do
+  `*Service` correspondente.
+
 ### 4. Conversão DTO → Entity acontece na camada de Service
 
 A transformação de dados de entrada (DTO) para entidade de persistência é responsabilidade do
@@ -305,7 +324,7 @@ query strings, path onde couber) — deve ocorrer **antes** da camada de Service
 - **Vários query params** (filtros de listagem, paginação com validação, etc.): classe em `v1/dtos/{dominio}/`
   (ex.: `ListUsersQueryDTO`) com `@QueryParam` nos campos, constraints (`@EnumConstraint`, `@NotNull`, etc.) e
   parâmetro do endpoint `@Valid @BeanParam EssaClasse`. O runtime valida ao despachar o método; em falha,
-  responde **400** via `GlobalExceptionMapper` + `ConstraintViolationException`, sem entrar no Service.
+  responde **400** via `RestValidationExceptionMapper` (`ConstraintViolationException` na borda REST), sem entrar no Service.
 - **Mensagens** das constraints de entrada devem permanecer alinhadas ao texto em `MessageErrorEnum`
   quando existir entrada correspondente (o atributo `message` das anotações não pode referenciar o enum
   em tempo de compilação; mantenha o mesmo texto).
@@ -327,8 +346,8 @@ if (!sponsor.getIsActive()) {
 }
 ```
 
-O `GlobalExceptionMapper` captura as exceções automaticamente e as converte em respostas
-`ResponseModel` padronizadas, sem necessidade de try/catch nos Resources.
+Falhas de validação de entrada na borda REST são tratadas pelo `RestValidationExceptionMapper`; exceções
+de negócio e demais erros pelo `GlobalExceptionMapper` — ambos produzem `ResponseModel`, sem try/catch nos Resources.
 
 ### 7. ResponseModel como wrapper na camada de Resource
 
@@ -504,7 +523,15 @@ Cliente HTTP
 Em caso de erro:
 
 ```
-Exceção lançada no Service
+Bean_Validation_na_borda_REST_@Valid
+    │
+    ▼
+┌────────────────────────────────────┐
+│  RestValidationExceptionMapper     │  → 400 + ResponseModel (messages)
+│           (@Provider)              │
+└────────────────────────────────────┘
+
+Exceção lançada no Service (ou não tratada)
     │
     ▼
 ┌──────────────────────────┐

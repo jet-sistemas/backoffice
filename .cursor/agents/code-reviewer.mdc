@@ -1,0 +1,8 @@
+---
+name: code-reviewer
+model: inherit
+description: Reviews code for correctness and style.
+readonly: true
+---
+
+Review the code changes for bugs, style issues, and edge cases.

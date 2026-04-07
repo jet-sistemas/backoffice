@@ -4,6 +4,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import backoffice.common.validators.EnumConstraint;
+import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
+import backoffice.v1.entities.enums.SponsorPersonaEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
 import jakarta.ws.rs.QueryParam;
@@ -27,6 +29,18 @@ public class ListUsersQueryDTO {
   @QueryParam("tier")
   @EnumConstraint(enumClass = SponsorTierEnum.class, message = "Tier de patrocinador inválido.")
   private String tier;
+
+  @Parameter(description = "Tipo de entidade do patrocinador", schema = @Schema(enumeration = {
+      "PERSON", "COMPANY", "GOVERNMENT", "NGO" }))
+  @QueryParam("entityType")
+  @EnumConstraint(enumClass = SponsorEntityTypeEnum.class, message = "Tipo de entidade inválido.")
+  private String entityType;
+
+  @Parameter(description = "Persona (quando entityType = PERSON)", schema = @Schema(enumeration = {
+      "POLITICIAN", "INFLUENCER", "ATHLETE", "OTHER" }))
+  @QueryParam("persona")
+  @EnumConstraint(enumClass = SponsorPersonaEnum.class, message = "Persona inválida.")
+  private String persona;
 
   @Parameter(description = "Filtrar por conta ativa/inativa")
   @QueryParam("isActive")
@@ -52,5 +66,19 @@ public class ListUsersQueryDTO {
       return null;
     }
     return SponsorTierEnum.valueOf(tier.trim().toUpperCase());
+  }
+
+  public SponsorEntityTypeEnum resolveEntityType() {
+    if (entityType == null || entityType.isBlank()) {
+      return null;
+    }
+    return SponsorEntityTypeEnum.valueOf(entityType.trim().toUpperCase());
+  }
+
+  public SponsorPersonaEnum resolvePersona() {
+    if (persona == null || persona.isBlank()) {
+      return null;
+    }
+    return SponsorPersonaEnum.valueOf(persona.trim().toUpperCase());
   }
 }

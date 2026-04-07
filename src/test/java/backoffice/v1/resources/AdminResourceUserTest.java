@@ -476,4 +476,164 @@ class AdminResourceUserTest {
           .statusCode(404);
     }
   }
+
+  @Nested
+  @DisplayName("PATCH /v1/admin/user/{id}/activate e /deactivate")
+  class ActivateDeactivateUser {
+
+    private static final String BENEFIT_PATH = "/v1/admin/benefit";
+
+    @Test
+    @DisplayName("activate retorna 401 quando não autenticado")
+    void activateWithoutAuth_returns401() {
+      given()
+          .when()
+          .patch(BASE_PATH + "/1/activate")
+          .then()
+          .statusCode(401);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("activate retorna 404 quando usuário não existe")
+    void activateNonExistentUser_returns404() {
+      given()
+          .when()
+          .patch(BASE_PATH + "/999999/activate")
+          .then()
+          .statusCode(404);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("desativar e reativar usuário ADM restaura conta ativa")
+    void deactivateThenActivateAdmUser_restoresAccount() {
+      String email = uniqueEmail("adm-activate");
+      String code = uniqueCode();
+
+      Long userId = given()
+          .contentType(ContentType.JSON)
+          .body(admUserPayload(email, code))
+          .when()
+          .post(BASE_PATH)
+          .then()
+          .statusCode(201)
+          .extract()
+          .jsonPath()
+          .getLong("data.id");
+
+      given()
+          .when()
+          .patch(BASE_PATH + "/" + userId + "/deactivate")
+          .then()
+          .statusCode(200)
+          .body("status", is("OK"));
+
+      given()
+          .when()
+          .get(BASE_PATH + "/" + userId)
+          .then()
+          .statusCode(200)
+          .body("data.accountActive", is(false));
+
+      given()
+          .when()
+          .patch(BASE_PATH + "/" + userId + "/activate")
+          .then()
+          .statusCode(200)
+          .body("status", is("OK"));
+
+      given()
+          .when()
+          .get(BASE_PATH + "/" + userId)
+          .then()
+          .statusCode(200)
+          .body("data.accountActive", is(true));
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("desativar e reativar patrocinador restaura conta, sponsor e benefícios")
+    void deactivateThenActivateSponsorUser_restoresSponsorAndBenefits() {
+      String email = uniqueEmail("sponsor-activate");
+      String code = uniqueCode();
+
+      Long userId = given()
+          .contentType(ContentType.JSON)
+          .body(sponsorUserPayload(email, code))
+          .when()
+          .post(BASE_PATH)
+          .then()
+          .statusCode(201)
+          .extract()
+          .jsonPath()
+          .getLong("data.id");
+
+      Long sponsorId = given()
+          .when()
+          .get(BASE_PATH + "/" + userId)
+          .then()
+          .statusCode(200)
+          .extract()
+          .jsonPath()
+          .getLong("data.sponsor.id");
+
+      Long benefitId = given()
+          .contentType(ContentType.JSON)
+          .body(Map.of(
+              "name", "Benefício ciclo ativar",
+              "description", "Teste",
+              "sponsorId", sponsorId
+          ))
+          .when()
+          .post(BENEFIT_PATH)
+          .then()
+          .statusCode(201)
+          .extract()
+          .jsonPath()
+          .getLong("data.id");
+
+      given()
+          .when()
+          .patch(BASE_PATH + "/" + userId + "/deactivate")
+          .then()
+          .statusCode(200);
+
+      given()
+          .when()
+          .get(BASE_PATH + "/" + userId)
+          .then()
+          .statusCode(200)
+          .body("data.accountActive", is(false))
+          .body("data.sponsor.active", is(false));
+
+      given()
+          .when()
+          .get(BENEFIT_PATH + "/" + benefitId)
+          .then()
+          .statusCode(200)
+          .body("data.active", is(false));
+
+      given()
+          .when()
+          .patch(BASE_PATH + "/" + userId + "/activate")
+          .then()
+          .statusCode(200);
+
+      given()
+          .when()
+          .get(BASE_PATH + "/" + userId)
+          .then()
+          .statusCode(200)
+          .body("data.accountActive", is(true))
+          .body("data.sponsor.active", is(true));
+
+      given()
+          .when()
+          .get(BENEFIT_PATH + "/" + benefitId)
+          .then()
+          .statusCode(200)
+          .body("data.active", is(true));
+    }
+  }
 }

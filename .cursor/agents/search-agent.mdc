@@ -1,0 +1,8 @@
+---
+name: search-agent
+model: fast
+description: Searches the codebase for relevant files and symbols.
+readonly: true
+---
+
+Search the codebase and return relevant file paths and code snippets.
