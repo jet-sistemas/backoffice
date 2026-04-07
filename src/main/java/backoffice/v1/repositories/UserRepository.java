@@ -9,6 +9,8 @@ import java.util.Optional;
 import backoffice.common.database.Pageable;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.entities.User;
+import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
+import backoffice.v1.entities.enums.SponsorPersonaEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
@@ -41,7 +43,8 @@ public class UserRepository implements PanacheRepositoryBase<User, Long> {
     return count("document = ?1 and id != ?2", document, id) > 0;
   }
 
-  public Pageable<User> findAllPaginated(UserTypeEnum type, SponsorTierEnum tier, Boolean isActive, PageDTO pageDTO) {
+  public Pageable<User> findAllPaginated(UserTypeEnum type, SponsorTierEnum tier,
+      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, Boolean isActive, PageDTO pageDTO) {
     var sb = new StringBuilder();
     Map<String, Object> params = new HashMap<>();
     List<String> conditions = new ArrayList<>();
@@ -51,9 +54,23 @@ public class UserRepository implements PanacheRepositoryBase<User, Long> {
       params.put("type", type);
     }
 
-    if (tier != null) {
-      conditions.add("exists (select 1 from Sponsor s where s.user = u and s.tier = :tier)");
-      params.put("tier", tier);
+    boolean sponsorFilter = tier != null || entityType != null || persona != null;
+    if (sponsorFilter) {
+      var sub = new StringBuilder("exists (select 1 from Sponsor s where s.user = u");
+      if (tier != null) {
+        sub.append(" and s.tier = :tier");
+        params.put("tier", tier);
+      }
+      if (entityType != null) {
+        sub.append(" and s.entityType = :entityType");
+        params.put("entityType", entityType);
+      }
+      if (persona != null) {
+        sub.append(" and s.persona = :persona");
+        params.put("persona", persona);
+      }
+      sub.append(")");
+      conditions.add(sub.toString());
     }
 
     if (isActive != null) {

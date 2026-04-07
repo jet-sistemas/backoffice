@@ -20,6 +20,8 @@ import backoffice.v1.dtos.user.UserWithSponsorDTO;
 import backoffice.v1.dtos.user.UserWithSponsorUpdateDTO;
 import backoffice.v1.entities.Sponsor;
 import backoffice.v1.entities.User;
+import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
+import backoffice.v1.entities.enums.SponsorPersonaEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -131,8 +133,12 @@ public class AdminService {
         .orElse(null);
   }
 
-  public Pageable<UserWithSponsorDTO> listUsers(UserTypeEnum type, SponsorTierEnum tier, Boolean isActive, PageDTO pageDTO) {
-    Pageable<User> pageable = userService.listUsers(type, tier, isActive, pageDTO);
+  public Pageable<UserWithSponsorDTO> listUsers(UserTypeEnum type, SponsorTierEnum tier,
+      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, Boolean isActive, PageDTO pageDTO) {
+    SponsorPersonaEnum effectivePersona =
+        entityType == SponsorEntityTypeEnum.PERSON ? persona : null;
+    Pageable<User> pageable =
+        userService.listUsers(type, tier, entityType, effectivePersona, isActive, pageDTO);
 
     List<Long> userIds = pageable.getData().stream()
         .filter(u -> isSponsorType(u.getType()))

@@ -69,6 +69,8 @@ public class AdminResource implements AdminApi {
     Pageable<UserWithSponsorDTO> result = service.listUsers(
         query.resolveType(),
         query.resolveTier(),
+        query.resolveEntityType(),
+        query.resolvePersona(),
         query.getIsActive(),
         PageDTO.of(query.getPage(), query.getSize()));
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);

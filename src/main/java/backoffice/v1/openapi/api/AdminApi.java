@@ -121,7 +121,7 @@ public interface AdminApi {
 	@GET
 	@Path("/user")
 	@Tag(name = "Admin - Usuários")
-	@Operation(summary = "Listar usuários", description = "Listagem paginada com filtros por tipo, tier e status de ativação.")
+	@Operation(summary = "Listar usuários", description = "Listagem paginada com filtros por tipo, tier, tipo de entidade e persona do patrocinador (persona aplicada só quando entityType = PERSON), e status de ativação.")
 	@APIResponses({
 			@APIResponse(responseCode = "200", description = "Lista paginada de usuários", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeUserWithSponsorListDTO.class)))
 	})

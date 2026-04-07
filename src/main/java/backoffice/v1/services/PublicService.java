@@ -23,7 +23,8 @@ public class PublicService {
   private SponsorService sponsorService;
 
   public Pageable<PublicSponsorItemDTO> listActiveSponsors(SponsorTierEnum tier, PageDTO pageDTO) {
-    Pageable<User> pageableUsers = userService.listUsers(UserTypeEnum.SPONSOR, tier, Boolean.TRUE, pageDTO);
+    Pageable<User> pageableUsers =
+        userService.listUsers(UserTypeEnum.SPONSOR, tier, null, null, Boolean.TRUE, pageDTO);
 
     List<Long> userIds = pageableUsers.getData().stream()
         .map(User::getId)
