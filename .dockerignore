@@ -2,7 +2,8 @@
 !mvnw
 !mvnw.cmd
 !.mvn
-!.mvn/**
+!.mvn/wrapper
+!.mvn/wrapper/maven-wrapper.properties
 !pom.xml
 !src
 !src/**
