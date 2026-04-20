@@ -1,0 +1,110 @@
+---
+name: Architecture
+alwaysApply: true
+---
+Você é um especialista em programação Java, Quarkus, Jakarta EE e tecnologias relacionadas.
+
+Lista canónica da **stack tecnológica** do projeto: início de `code-style.mdc` (secção **Stack Tecnológica**).
+
+> A fonte da verdade sobre estilo de código, estrutura de pacotes e regras arquiteturais
+> é o arquivo `code-style.mdc`. Este arquivo complementa com orientações gerais do Quarkus.
+
+## Estilo de Código e Estrutura
+
+- Escreva código Java limpo, eficiente e bem organizado seguindo as boas práticas do Quarkus.
+- Siga as convenções de Jakarta EE e MicroProfile na organização dos pacotes.
+- Use nomes descritivos para métodos e variáveis seguindo a convenção camelCase.
+- A camada de Resource e Service deve usar DTOs exclusivamente.
+  - A comunicação entre DTOs e Entities é feita através de classes Mapper. Ex: `src/main/java/backoffice/common/mappers/UserMapper.java`
+- Todas as respostas da API devem seguir o modelo `src/main/java/backoffice/common/requests/ResponseModel.java`
+- Erros HTTP em `ResponseModel`: Bean Validation na borda REST → `src/main/java/backoffice/common/exceptions/RestValidationExceptionMapper.java`; demais → `src/main/java/backoffice/common/exceptions/GlobalExceptionMapper.java`
+  - Todas as mensagens de erro devem ser mapeadas no `src/main/java/backoffice/common/exceptions/MessageErrorEnum.java`
+- **Validação de entrada** (body JSON, query/path com constraints de formato e enum) ocorre na **borda REST** (Bean Validation com `@Valid`, DTOs com `@BeanParam` quando necessário), **antes** da chamada aos Services. **Regras de negócio** e validações que dependem do estado persistido ficam nos Services. Detalhes e exemplos em `code-style.mdc` (regra 6 e `common/validators/`).
+
+## Especificação OpenAPI (MicroProfile)
+
+- A documentação exposta pelo **SmallRye OpenAPI** (Swagger UI, `/q/openapi`) e o **contrato JAX-RS** das rotas ficam centralizados em `src/main/java/backoffice/v1/openapi/`, **fora** de `v1/resources/`, para manter os Resources enxutos.
+- **`openapi/api/`** — interfaces `{Domínio}Api` (ex.: `AdminApi`, `AuthApi`) com anotações Jakarta REST (`@Path`, verbos HTTP, `@RolesAllowed`, `@Authenticated`, parâmetros, `@Valid`) e MicroProfile OpenAPI (`@Tag`, `@Operation`, `@APIResponses`, `@Parameter`). O Resource correspondente **implementa** essa interface e contém só injeção de service e o corpo dos métodos.
+- **`openapi/dto/`** — classes **apenas para schema** no OpenAPI (ex.: `Envelope*DTO` estendendo `ResponseModel<T>` com `@Schema`), para tipar o payload em `data`; não substituem os DTOs de domínio em `v1/dtos/`.
+- O envelope padrão de runtime continua em `common/requests/ResponseModel.java` (incluindo `@Schema` nos campos do envelope quando fizer sentido).
+
+## Convenções de Nomenclatura
+
+- Use PascalCase para nomes de classes (ex.: `UserResource`, `AdminService`).
+- Use camelCase para nomes de métodos e variáveis (ex.: `findUserById`, `isOrderValid`).
+- Use ALL_CAPS para constantes (ex.: `MAX_RETRY_ATTEMPTS`, `DEFAULT_PAGE_SIZE`).
+- Consulte a tabela completa de convenções no `code-style.mdc`.
+
+## Especificidades do Quarkus
+
+- Aproveite o Quarkus Dev Mode para ciclos de desenvolvimento mais rápidos.
+- Use anotações do Quarkus (ex.: `@ApplicationScoped`, `@Inject`, `@ConfigProperty`) de forma efetiva.
+
+## Configuração e Properties
+
+- Armazene configurações em `application.properties` ou `application.yaml`.
+- Use `@ConfigProperty` para injeção de configuração com tipagem segura.
+- Use perfis do Quarkus (`dev`, `test`, `prod`) para configurações específicas de ambiente.
+
+## Injeção de Dependência
+
+- Use anotações CDI (`@Inject`, `@Named`, `@Singleton`, etc.) para código limpo e testável.
+- O projeto adota **field injection** com `@Inject` como padrão, conforme exemplificado no `code-style.mdc`.
+
+## Testes
+
+- Escreva testes com JUnit 5 e use `@QuarkusTest` para testes de integração.
+- Use rest-assured para testar endpoints REST (ex.: `@QuarkusTestResource`).
+- Implemente bancos em memória ou test-containers para testes de integração.
+
+## Segurança
+
+- Autenticação e autorização via **SmallRye JWT**.
+- Integre MicroProfile JWT para segurança baseada em tokens.
+- Configure CORS e outros headers de segurança via extensões do Quarkus.
+
+## Logging
+
+- Use o subsistema de logging do Quarkus com SLF4J.
+- Use níveis de log adequados (`ERROR`, `WARN`, `INFO`, `DEBUG`) e logging estruturado quando possível.
+
+## Acesso a Dados e ORM
+
+- Use Hibernate ORM com Panache para padrões simplificados de Entity e Repository.
+- Implemente relacionamentos e cascading adequados (`OneToMany`, `ManyToOne`, etc.) conforme documentado no `code-style.mdc`.
+
+## Armazenamento de Arquivos Estáticos (Cloudflare R2)
+
+O projeto utiliza **Cloudflare R2** como object storage para arquivos estáticos (avatares, logos, etc.). O banco de dados armazena apenas o **path relativo** do arquivo — nunca a URL pública completa.
+
+### Buckets por domínio e ambiente
+
+| Domínio | Dev | Prod |
+|---------|-----|------|
+| Avatar de usuário | `backoffice/dev/users/avatar` | `backoffice/prod/users/avatar` |
+| Logo de patrocinador | `backoffice/dev/sponsors/logo` | `backoffice/prod/sponsors/logo` |
+
+### Regras
+
+- Campos de URL de arquivo nas entidades (`avatarUrl`, `logoUrl`, etc.) devem armazenar **somente o path relativo** dentro do bucket (ex.: `users/avatar/uuid-do-arquivo.png`).
+- A resolução da URL pública completa é responsabilidade do frontend ou de um service dedicado — nunca da entidade.
+- O bucket a ser utilizado (dev/prod) deve ser determinado pelo **perfil ativo do Quarkus** (`dev`, `prod`), via `@ConfigProperty`.
+- Uploads e deleções no R2 devem ser encapsulados em um service de infraestrutura dentro de `common/` (ex.: `common/services/StorageService`), nunca nos Services de domínio diretamente.
+
+## Build e Deploy
+
+- Use Maven com plugins do Quarkus para build e empacotamento.
+- Configure builds Docker multi-stage para imagens otimizadas.
+- Use perfis e variáveis de ambiente adequados para diferentes targets de deploy (`dev`, `test`, `prod`).
+
+## Princípios Gerais
+
+- Siga boas práticas de design de API REST (uso adequado de métodos HTTP e status codes).
+- Adote os princípios SOLID para garantir alta coesão e baixo acoplamento.
+
+## Conduta do Agente (IA)
+
+- **NUNCA** crie arquivos `.md` explicativos, de instrução ou narrativos sobre o que está sendo implementado (ex.: `MIGRATION_REQUIRED.md`, `CHANGELOG.md`, `README` de migration, etc.). Documentação só deve ser criada quando **explicitamente solicitada** pelo usuário.
+- **NUNCA** crie arquivos de qualquer tipo que sirvam apenas para explicar ao usuário o que foi feito. A comunicação deve acontecer exclusivamente via texto de resposta.
+- **Seja resoluto**: respostas curtas e diretas. Evite recapitulações, listas de "o que foi feito" e resumos extensos. Informe apenas o essencial — o que mudou e, se necessário, alguma ação pendente do usuário.
+- **Economia de tokens**: não repita código que acabou de ser editado, não liste arquivos alterados quando a mudança for trivial, e não forneça explicações não solicitadas.

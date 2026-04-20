@@ -1,4 +1,4 @@
-package project.common.exceptions.customs;
+package backoffice.common.exceptions.customs;
 
 public class NotFoundException extends RuntimeException {
   private final int statusCode;

@@ -19,7 +19,23 @@ public enum MessageErrorEnum {
   SPONSOR_NOT_FOUND("Patrocinador não encontrado."),
   SPONSOR_ALREADY_EXISTS("Um patrocinador já existe com estes dados."),
   SPONSOR_INVALID_TYPE_ENUM("Tipo de patrocinador inválido."),
-  SPONSOR_NOT_ACTIVE("Este patrocinador não está ativo.");
+  SPONSOR_TIER_INVALID_ENUM("Tier de patrocinador inválido."),
+  SPONSOR_NOT_ACTIVE("Este patrocinador não está ativo."),
+  SPONSOR_PERSONA_REQUIRED_FOR_PERSON(
+      "Persona é obrigatória quando o tipo de entidade é PERSON. Valores aceitos: POLITICIAN, INFLUENCER, ATHLETE, OTHER"),
+  SPONSOR_DATA_REQUIRED("Dados do patrocinador são obrigatórios para usuários do tipo SPONSOR."),
+  USER_TYPE_NOT_IMPLEMENTED("Tipo de usuário ainda não implementado."),
+
+  BENEFIT_NOT_FOUND("Benefício não encontrado."),
+
+  STORAGE_NOT_CONFIGURED("Armazenamento de arquivos não está configurado."),
+  STORAGE_OPERATION_FAILED("Falha ao operar no armazenamento de objetos."),
+  UPLOAD_CONTENT_TYPE_NOT_ALLOWED("Tipo de arquivo não permitido. Use image/png, image/jpeg ou image/webp."),
+  UPLOAD_SIZE_EXCEEDED("O arquivo excede o tamanho máximo permitido."),
+  UPLOAD_OBJECT_NOT_FOUND("Objeto não encontrado no armazenamento."),
+  UPLOAD_KEY_INVALID("A chave do objeto não é válida para esta entidade."),
+  UPLOAD_KEY_MISMATCH("A chave informada não corresponde à imagem atual desta entidade."),
+  UPLOAD_RATE_LIMIT("Limite de solicitações de upload excedido. Tente novamente em instantes.");
 
   public String message;
 
