@@ -1,8 +1,8 @@
 package backoffice.v1.dtos.auth;
 
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +18,6 @@ public class AuthCreateDTO {
   private String email;
 
   @NotBlank
-  @Min(value = 8)
+  @Size(min = 8, max = 16, message = "A senha deve ter entre 8 e 16 caracteres")
   private String password;
 }
