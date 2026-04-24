@@ -5,11 +5,14 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import io.restassured.http.ContentType;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,6 +41,11 @@ class AdminResourceUserTest {
   }
 
   private static Map<String, Object> sponsorUserPayload(String email, String code, String document) {
+    return sponsorUserPayload(email, code, document, "Patrocinador Public Name");
+  }
+
+  private static Map<String, Object> sponsorUserPayload(String email, String code, String document,
+      String publicName) {
     var payload = new HashMap<String, Object>();
     payload.put("user", Map.of(
         "email", email,
@@ -47,7 +55,7 @@ class AdminResourceUserTest {
         "type", "SPONSOR"
     ));
     payload.put("sponsor", Map.of(
-        "publicName", "Patrocinador Public Name",
+        "publicName", publicName,
         "tier", "GOLD",
         "entityType", "COMPANY",
         "persona", "OTHER"
@@ -142,6 +150,94 @@ class AdminResourceUserTest {
           .body("currentPage", is(1))
           .body("pageSize", greaterThanOrEqualTo(0))
           .body("data.size()", greaterThanOrEqualTo(0));
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("retorna 400 quando search excede o tamanho máximo")
+    void listWithSearchTooLong_returns400() {
+      String tooLong = "x".repeat(101);
+      given()
+          .queryParam("search", tooLong)
+          .when()
+          .get(BASE_PATH)
+          .then()
+          .statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("aceita parâmetro search com type=SPONSOR e retorna 200")
+    void listWithSearchParam_returns200() {
+      given()
+          .queryParam("type", "SPONSOR")
+          .queryParam("search", "nom")
+          .when()
+          .get(BASE_PATH)
+          .then()
+          .statusCode(200)
+          .body("status", is("OK"))
+          .body("data", notNullValue());
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("search encontra patrocinador criado por nome público, documento e código")
+    void listSearch_findsCreatedSponsorByPublicNameDocumentAndCode() {
+      String marker = "SrchMrk" + (System.currentTimeMillis() % 1_000_000);
+      String publicName = "Empresa " + marker;
+      String document = uniqueDocument();
+      String code = "K" + String.format("%04d", (int) (System.currentTimeMillis() % 10000));
+      String email = uniqueEmail("search-sponsor");
+
+      int userId = given()
+          .contentType(ContentType.JSON)
+          .body(sponsorUserPayload(email, code, document, publicName))
+          .when()
+          .post(BASE_PATH)
+          .then()
+          .statusCode(201)
+          .extract()
+          .path("data.id");
+
+      given()
+          .queryParam("type", "SPONSOR")
+          .queryParam("search", marker)
+          .when()
+          .get(BASE_PATH)
+          .then()
+          .statusCode(200)
+          .body("data.id", hasItem(userId));
+
+      String docTail = document.substring(Math.max(0, document.length() - 6));
+      given()
+          .queryParam("type", "SPONSOR")
+          .queryParam("search", docTail)
+          .when()
+          .get(BASE_PATH)
+          .then()
+          .statusCode(200)
+          .body("data.id", hasItem(userId));
+
+      given()
+          .queryParam("type", "SPONSOR")
+          .queryParam("search", code)
+          .when()
+          .get(BASE_PATH)
+          .then()
+          .statusCode(200)
+          .body("data.id", hasItem(userId));
+
+      List<Integer> idsUnrelated = given()
+          .queryParam("type", "SPONSOR")
+          .queryParam("search", "Qy7vBw9kLm2NoHit" + marker)
+          .when()
+          .get(BASE_PATH)
+          .then()
+          .statusCode(200)
+          .extract()
+          .path("data.id");
+      assertFalse(idsUnrelated.contains(userId));
     }
   }
 

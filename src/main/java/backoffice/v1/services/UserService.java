@@ -62,8 +62,9 @@ public class UserService {
   }
 
   public Pageable<User> listUsers(UserTypeEnum type, SponsorTierEnum tier,
-      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, Boolean isActive, PageDTO pageDTO) {
-    return userRepository.findAllPaginated(type, tier, entityType, persona, isActive, pageDTO);
+      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, Boolean isActive, String search,
+      PageDTO pageDTO) {
+    return userRepository.findAllPaginated(type, tier, entityType, persona, isActive, search, pageDTO);
   }
 
   public void persistAndFlush(User user) {

@@ -8,6 +8,7 @@ import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
 import backoffice.v1.entities.enums.SponsorPersonaEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
+import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.QueryParam;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -46,6 +47,11 @@ public class ListUsersQueryDTO {
   @QueryParam("isActive")
   private Boolean isActive;
 
+  @Parameter(description = "Busca textual: nome da conta, nome público do patrocinador, documento ou código")
+  @QueryParam("search")
+  @Size(max = 100, message = "O termo de busca excede o tamanho máximo permitido.")
+  private String search;
+
   @Parameter(description = "Número da página (0-based)")
   @QueryParam("page")
   private Integer page;
@@ -80,5 +86,16 @@ public class ListUsersQueryDTO {
       return null;
     }
     return SponsorPersonaEnum.valueOf(persona.trim().toUpperCase());
+  }
+
+  /**
+   * Termo de busca para o repositório; {@code null} se ausente ou só espaços.
+   * (Validação de tamanho máximo via {@link Size} / Bean Validation.)
+   */
+  public String resolveSearch() {
+    if (search == null || search.isBlank()) {
+      return null;
+    }
+    return search.trim();
   }
 }

@@ -134,11 +134,12 @@ public class AdminService {
   }
 
   public Pageable<UserWithSponsorDTO> listUsers(UserTypeEnum type, SponsorTierEnum tier,
-      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, Boolean isActive, PageDTO pageDTO) {
+      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, Boolean isActive, String search,
+      PageDTO pageDTO) {
     SponsorPersonaEnum effectivePersona =
         entityType == SponsorEntityTypeEnum.PERSON ? persona : null;
     Pageable<User> pageable =
-        userService.listUsers(type, tier, entityType, effectivePersona, isActive, pageDTO);
+        userService.listUsers(type, tier, entityType, effectivePersona, isActive, search, pageDTO);
 
     List<Long> userIds = pageable.getData().stream()
         .filter(u -> isSponsorType(u.getType()))

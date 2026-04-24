@@ -72,6 +72,7 @@ public class AdminResource implements AdminApi {
         query.resolveEntityType(),
         query.resolvePersona(),
         query.getIsActive(),
+        query.resolveSearch(),
         PageDTO.of(query.getPage(), query.getSize()));
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
     return Response.ok(response).build();
