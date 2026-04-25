@@ -194,6 +194,10 @@ public class AdminService {
     benefitService.deactivate(benefitId);
   }
 
+  public void activateBenefit(Long benefitId) {
+    benefitService.activate(benefitId);
+  }
+
   public void deleteBenefit(Long benefitId) {
     benefitService.delete(benefitId);
   }

@@ -13,11 +13,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 public class BenefitRepository implements PanacheRepositoryBase<Benefit, Long> {
 
   public int deactivateBySponsorId(Long sponsorId) {
-    return update("isActive = false where sponsor.id = ?1", sponsorId);
+    return update("isActive = false where sponsor.id = ?1 and isActive = true", sponsorId);
   }
 
   public int activateBySponsorId(Long sponsorId) {
-    return update("isActive = true where sponsor.id = ?1", sponsorId);
+    return update("isActive = true where sponsor.id = ?1 and isActive = false", sponsorId);
   }
 
   public long deleteBySponsorId(Long sponsorId) {

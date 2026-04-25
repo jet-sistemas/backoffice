@@ -176,6 +176,15 @@ public interface AdminApi {
 	})
 	Response deactivateBenefit(@PathParam("id") Long id);
 
+	@PATCH
+	@Path("/benefit/{id}/activate")
+	@Tag(name = "Admin - Benefícios")
+	@Operation(summary = "Reativar benefício", description = "Reativa o benefício (isActive = true) se puder: benefício geral, ou vinculado a patrocinador ativo. Idempotente se já ativo.")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Benefício reativado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeVoid.class)))
+	})
+	Response activateBenefit(@PathParam("id") Long id);
+
 	@DELETE
 	@Path("/benefit/{id}")
 	@Tag(name = "Admin - Benefícios")

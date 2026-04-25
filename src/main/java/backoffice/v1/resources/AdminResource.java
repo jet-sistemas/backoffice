@@ -114,6 +114,13 @@ public class AdminResource implements AdminApi {
   }
 
   @Override
+  public Response activateBenefit(Long id) {
+    service.activateBenefit(id);
+    var response = ResponseModel.success(Status.OK.getStatusCode());
+    return Response.ok(response).build();
+  }
+
+  @Override
   public Response deleteBenefit(Long id) {
     service.deleteBenefit(id);
     var response = ResponseModel.success(Status.OK.getStatusCode());
