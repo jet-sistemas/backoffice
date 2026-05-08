@@ -10,12 +10,16 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
+import backoffice.v1.dtos.member.ListMembersQueryDTO;
+import backoffice.v1.dtos.member.MemberCreateDTO;
 import backoffice.v1.dtos.user.ListUsersQueryDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorUpdateDTO;
 import backoffice.v1.openapi.dto.EnvelopeBenefitDTO;
 import backoffice.v1.openapi.dto.EnvelopeBenefitListDTO;
 import backoffice.v1.openapi.dto.EnvelopeErrorDTO;
+import backoffice.v1.openapi.dto.EnvelopeMemberDTO;
+import backoffice.v1.openapi.dto.EnvelopeMemberListDTO;
 import backoffice.v1.openapi.dto.EnvelopeUserWithSponsorDTO;
 import backoffice.v1.openapi.dto.EnvelopeUserWithSponsorListDTO;
 import backoffice.v1.openapi.dto.EnvelopeVoid;
@@ -67,7 +71,7 @@ public interface AdminApi {
 	@POST
 	@Path("/user")
 	@Tag(name = "Admin - Usuários")
-	@Operation(summary = "Criar usuário", description = "Cria um novo usuário com dados opcionais de patrocinador. Tipo MEMBER e SPONSOR_MEMBER ainda não implementados.")
+	@Operation(summary = "Criar usuário", description = "Cria um novo usuário com dados opcionais de patrocinador ou membro, de acordo com o tipo.")
 	@APIResponses({
 			@APIResponse(responseCode = "201", description = "Usuário criado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeUserWithSponsorDTO.class)))
 	})
@@ -126,6 +130,33 @@ public interface AdminApi {
 			@APIResponse(responseCode = "200", description = "Lista paginada de usuários", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeUserWithSponsorListDTO.class)))
 	})
 	Response listUsers(@Valid @BeanParam ListUsersQueryDTO query);
+
+	@POST
+	@Path("/member")
+	@Tag(name = "Admin - Membros")
+	@Operation(summary = "Criar membro", description = "Cria usuário do tipo MEMBER e registro de membro vinculado no mesmo fluxo transacional.")
+	@APIResponses({
+			@APIResponse(responseCode = "201", description = "Membro criado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeMemberDTO.class)))
+	})
+	Response createMember(@Valid MemberCreateDTO dto);
+
+	@GET
+	@Path("/member/{id}")
+	@Tag(name = "Admin - Membros")
+	@Operation(summary = "Buscar membro por ID", description = "Retorna os dados básicos do membro e da conta vinculada.")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Membro encontrado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeMemberDTO.class)))
+	})
+	Response findMemberById(@PathParam("id") Long id);
+
+	@GET
+	@Path("/member")
+	@Tag(name = "Admin - Membros")
+	@Operation(summary = "Listar membros", description = "Listagem paginada com filtros por tipo, status e busca textual.")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Lista paginada de membros", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeMemberListDTO.class)))
+	})
+	Response listMembers(@Valid @BeanParam ListMembersQueryDTO query);
 
 	@POST
 	@Path("/benefit")

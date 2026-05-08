@@ -75,6 +75,23 @@ class AdminResourceUserTest {
     return payload;
   }
 
+  private static Map<String, Object> memberUserPayload(String email, String code) {
+    var payload = new HashMap<String, Object>();
+    payload.put("user", Map.of(
+        "email", email,
+        "name", "Membro Teste",
+        "document", uniqueDocument(),
+        "code", code,
+        "type", "MEMBER"
+    ));
+    payload.put("member", Map.of(
+        "fullname", "Membro Teste Completo",
+        "whatsapp", "11999990000",
+        "type", "SUBSCRIBER"
+    ));
+    return payload;
+  }
+
   @Nested
   @DisplayName("GET /v1/admin/user - Listagem de usuários")
   class ListUsers {
@@ -454,24 +471,20 @@ class AdminResourceUserTest {
 
     @Test
     @TestSecurity(user = "admin", roles = "ADM")
-    @DisplayName("retorna 400 quando type=MEMBER (não implementado)")
-    void createMemberUser_returns400() {
-      var payload = new HashMap<String, Object>();
-      payload.put("user", Map.of(
-          "email", uniqueEmail("member-create"),
-          "name", "Membro Teste",
-          "document", uniqueDocument(),
-          "code", uniqueCode(),
-          "type", "MEMBER"
-      ));
-
+    @DisplayName("retorna 201 quando type=MEMBER com dados de membro válidos")
+    void createMemberUser_returns201() {
+      String email = uniqueEmail("member-create");
+      String code = uniqueCode();
       given()
           .contentType(ContentType.JSON)
-          .body(payload)
+          .body(memberUserPayload(email, code))
           .when()
           .post(BASE_PATH)
           .then()
-          .statusCode(400);
+          .statusCode(201)
+          .body("status", is("OK"))
+          .body("data.email", is(email))
+          .body("data.type", is("MEMBER"));
     }
   }
 

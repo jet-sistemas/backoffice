@@ -14,12 +14,15 @@ import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
 import backoffice.v1.dtos.common.PageDTO;
+import backoffice.v1.dtos.member.MemberCreateDTO;
+import backoffice.v1.dtos.member.MemberDTO;
 import backoffice.v1.dtos.user.UserCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorDTO;
 import backoffice.v1.dtos.user.UserWithSponsorUpdateDTO;
 import backoffice.v1.entities.Sponsor;
 import backoffice.v1.entities.User;
+import backoffice.v1.entities.enums.MemberTypeEnum;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
 import backoffice.v1.entities.enums.SponsorPersonaEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
@@ -39,6 +42,9 @@ public class AdminService {
   @Inject
   private BenefitService benefitService;
 
+  @Inject
+  private MemberService memberService;
+
   @Transactional
   public UserWithSponsorDTO createUser(UserWithSponsorCreateDTO dto) {
     UserCreateDTO userData = dto.getUser();
@@ -57,8 +63,32 @@ public class AdminService {
     if (isSponsorType(type)) {
       sponsor = sponsorService.create(dto.getSponsor(), user);
     }
+    if (UserTypeEnum.MEMBER.equals(type)) {
+      memberService.create(dto.getMember(), user);
+    }
 
     return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor);
+  }
+
+  @Transactional
+  public MemberDTO createMember(MemberCreateDTO dto) {
+    UserCreateDTO userData = dto.getUser();
+    userService.validateUniqueFields(userData.getEmail(), userData.getDocument(), userData.getCode());
+
+    userData.setPassword(PasswordUtils.hashPass("temp@1234"));
+    userData.setType(UserTypeEnum.MEMBER.name());
+
+    User user = userService.create(userData);
+    return memberService.create(dto.getMember(), user);
+  }
+
+  public MemberDTO findMemberById(Long memberId) {
+    return memberService.findDTOById(memberId);
+  }
+
+  public Pageable<MemberDTO> listMembers(MemberTypeEnum type, Boolean isActive, String search,
+      PageDTO pageDTO) {
+    return memberService.list(type, isActive, search, pageDTO);
   }
 
   @Transactional
@@ -159,12 +189,15 @@ public class AdminService {
   }
 
   private void validateTypeRequirements(UserTypeEnum type, UserWithSponsorCreateDTO dto) {
-    if (type == UserTypeEnum.MEMBER || type == UserTypeEnum.SPONSOR_MEMBER) {
+    if (type == UserTypeEnum.SPONSOR_MEMBER) {
       throw new BusinessException(MessageErrorEnum.USER_TYPE_NOT_IMPLEMENTED.getMessage(), 400);
     }
 
     if (isSponsorType(type) && dto.getSponsor() == null) {
       throw new BadRequestException(MessageErrorEnum.SPONSOR_DATA_REQUIRED.getMessage());
+    }
+    if (UserTypeEnum.MEMBER.equals(type) && dto.getMember() == null) {
+      throw new BadRequestException("Dados do membro são obrigatórios para usuários do tipo MEMBER.");
     }
   }
 

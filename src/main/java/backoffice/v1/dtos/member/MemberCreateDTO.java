@@ -1,7 +1,6 @@
-package backoffice.v1.dtos.user;
+package backoffice.v1.dtos.member;
 
-import backoffice.v1.dtos.sponsor.SponsorDataCreateDTO;
-import backoffice.v1.dtos.member.MemberDataCreateDTO;
+import backoffice.v1.dtos.user.UserCreateDTO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -13,15 +12,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserWithSponsorCreateDTO {
-
+public class MemberCreateDTO {
   @Valid
   @NotNull(message = "Os dados do usuário são obrigatórios")
   private UserCreateDTO user;
 
   @Valid
-  private SponsorDataCreateDTO sponsor;
-
-  @Valid
+  @NotNull(message = "Os dados do membro são obrigatórios")
   private MemberDataCreateDTO member;
 }
