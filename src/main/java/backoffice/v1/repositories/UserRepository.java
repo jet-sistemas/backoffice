@@ -10,6 +10,7 @@ import java.util.Optional;
 import backoffice.common.database.Pageable;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.entities.User;
+import backoffice.v1.entities.enums.MemberTypeEnum;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
 import backoffice.v1.entities.enums.SponsorPersonaEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
@@ -64,8 +65,8 @@ public class UserRepository implements PanacheRepositoryBase<User, Long> {
   }
 
   public Pageable<User> findAllPaginated(UserTypeEnum type, SponsorTierEnum tier,
-      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, Boolean isActive, String search,
-      PageDTO pageDTO) {
+      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, MemberTypeEnum memberType,
+      Boolean isActive, String search, PageDTO pageDTO) {
     var sb = new StringBuilder();
     Map<String, Object> params = new HashMap<>();
     List<String> conditions = new ArrayList<>();
@@ -94,6 +95,11 @@ public class UserRepository implements PanacheRepositoryBase<User, Long> {
       conditions.add(sub.toString());
     }
 
+    if (memberType != null) {
+      conditions.add("exists (select 1 from Member mmf where mmf.user = u and mmf.type = :memberType)");
+      params.put("memberType", memberType);
+    }
+
     if (isActive != null) {
       conditions.add("u.isAccountActive = :isActive");
       params.put("isActive", isActive);
@@ -114,6 +120,11 @@ public class UserRepository implements PanacheRepositoryBase<User, Long> {
         params.put("docDigitsLike", "%" + digits + "%");
         searchOrs.add(
             "cast(function('regexp_replace', u.document, '[^0-9]', '', 'g') as string) like :docDigitsLike");
+      }
+      if (UserTypeEnum.MEMBER.equals(type)) {
+        searchOrs.add(
+            "exists (select 1 from Member mm2 where mm2.user = u and (lower(mm2.fullname)" + likeClause
+                + " or lower(mm2.whatsapp)" + likeClause + "))");
       }
       conditions.add("(" + String.join(" or ", searchOrs) + ")");
     }

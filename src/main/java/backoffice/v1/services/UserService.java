@@ -8,6 +8,7 @@ import backoffice.common.mappers.UserMapper;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.user.UserCreateDTO;
 import backoffice.v1.entities.User;
+import backoffice.v1.entities.enums.MemberTypeEnum;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
 import backoffice.v1.entities.enums.SponsorPersonaEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
@@ -62,9 +63,10 @@ public class UserService {
   }
 
   public Pageable<User> listUsers(UserTypeEnum type, SponsorTierEnum tier,
-      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, Boolean isActive, String search,
-      PageDTO pageDTO) {
-    return userRepository.findAllPaginated(type, tier, entityType, persona, isActive, search, pageDTO);
+      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, MemberTypeEnum memberType,
+      Boolean isActive, String search, PageDTO pageDTO) {
+    return userRepository.findAllPaginated(type, tier, entityType, persona, memberType, isActive, search,
+        pageDTO);
   }
 
   public void persistAndFlush(User user) {

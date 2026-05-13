@@ -1,6 +1,8 @@
 package backoffice.v1.repositories;
 
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -28,6 +30,13 @@ public class MemberRepository implements PanacheRepositoryBase<Member, Long> {
 
   public Optional<Member> findByUserId(Long userId) {
     return find("user.id = ?1", userId).firstResultOptional();
+  }
+
+  public List<Member> findByUserIdIn(Collection<Long> userIds) {
+    if (userIds == null || userIds.isEmpty()) {
+      return List.of();
+    }
+    return find("user.id in ?1", userIds).list();
   }
 
   public Pageable<Member> findAllPaginated(MemberTypeEnum type, Boolean isActive, String search, PageDTO pageDTO) {

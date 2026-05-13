@@ -14,8 +14,8 @@ import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
 import backoffice.v1.dtos.common.PageDTO;
-import backoffice.v1.dtos.member.MemberCreateDTO;
 import backoffice.v1.dtos.member.MemberDTO;
+import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
 import backoffice.v1.dtos.user.UserCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorDTO;
@@ -67,28 +67,12 @@ public class AdminService {
       memberService.create(dto.getMember(), user);
     }
 
-    return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor);
-  }
+    MemberDTO memberDto = null;
+    if (UserTypeEnum.MEMBER.equals(type)) {
+      memberDto = memberService.findDTOByUserId(user.getId());
+    }
 
-  @Transactional
-  public MemberDTO createMember(MemberCreateDTO dto) {
-    UserCreateDTO userData = dto.getUser();
-    userService.validateUniqueFields(userData.getEmail(), userData.getDocument(), userData.getCode());
-
-    userData.setPassword(PasswordUtils.hashPass("temp@1234"));
-    userData.setType(UserTypeEnum.MEMBER.name());
-
-    User user = userService.create(userData);
-    return memberService.create(dto.getMember(), user);
-  }
-
-  public MemberDTO findMemberById(Long memberId) {
-    return memberService.findDTOById(memberId);
-  }
-
-  public Pageable<MemberDTO> listMembers(MemberTypeEnum type, Boolean isActive, String search,
-      PageDTO pageDTO) {
-    return memberService.list(type, isActive, search, pageDTO);
+    return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor, memberDto);
   }
 
   @Transactional
@@ -111,7 +95,12 @@ public class AdminService {
       }
     }
 
-    return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor);
+    MemberDTO memberDto = null;
+    if (UserTypeEnum.MEMBER.equals(user.getType())) {
+      memberDto = memberService.findDTOByUserId(userId);
+    }
+
+    return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor, memberDto);
   }
 
   @Transactional
@@ -124,6 +113,8 @@ public class AdminService {
 
     if (isSponsorType(user.getType())) {
       sponsorService.deactivateByUserId(userId);
+    } else if (UserTypeEnum.MEMBER.equals(user.getType())) {
+      memberService.deactivateByUserId(userId);
     }
   }
 
@@ -137,6 +128,8 @@ public class AdminService {
 
     if (isSponsorType(user.getType())) {
       sponsorService.activateByUserId(userId);
+    } else if (UserTypeEnum.MEMBER.equals(user.getType())) {
+      memberService.activateByUserId(userId);
     }
   }
 
@@ -147,6 +140,8 @@ public class AdminService {
 
     if (isSponsorType(user.getType())) {
       sponsorService.deleteByUserId(userId);
+    } else if (UserTypeEnum.MEMBER.equals(user.getType())) {
+      memberService.deleteCascadeByUserId(userId);
     }
 
     userService.delete(user);
@@ -158,27 +153,44 @@ public class AdminService {
           Sponsor sponsor = isSponsorType(user.getType())
               ? sponsorService.findByUserId(userId).orElse(null)
               : null;
-          return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor);
+          MemberDTO member = UserTypeEnum.MEMBER.equals(user.getType())
+              ? memberService.findDTOByUserId(userId)
+              : null;
+          return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor, member);
         })
         .orElse(null);
   }
 
   public Pageable<UserWithSponsorDTO> listUsers(UserTypeEnum type, SponsorTierEnum tier,
-      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, Boolean isActive, String search,
-      PageDTO pageDTO) {
+      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, MemberTypeEnum memberType,
+      Boolean isActive, String search, PageDTO pageDTO) {
+    if (memberType != null && type != UserTypeEnum.MEMBER) {
+      throw new BadRequestException(MessageErrorEnum.MEMBER_TYPE_FILTER_REQUIRES_USER_TYPE_MEMBER.getMessage());
+    }
     SponsorPersonaEnum effectivePersona =
         entityType == SponsorEntityTypeEnum.PERSON ? persona : null;
     Pageable<User> pageable =
-        userService.listUsers(type, tier, entityType, effectivePersona, isActive, search, pageDTO);
+        userService.listUsers(type, tier, entityType, effectivePersona, memberType, isActive, search, pageDTO);
 
-    List<Long> userIds = pageable.getData().stream()
+    List<Long> sponsorUserIds = pageable.getData().stream()
         .filter(u -> isSponsorType(u.getType()))
         .map(User::getId)
         .toList();
 
-    Map<Long, Sponsor> sponsorsByUserId = sponsorService.findByUserIds(userIds);
+    Map<Long, Sponsor> sponsorsByUserId = sponsorService.findByUserIds(sponsorUserIds);
 
-    return UserMapper.fromEntityToPageableDTO(pageable, sponsorsByUserId);
+    List<Long> memberUserIds = pageable.getData().stream()
+        .filter(u -> UserTypeEnum.MEMBER.equals(u.getType()))
+        .map(User::getId)
+        .toList();
+    Map<Long, MemberDTO> membersByUserId = memberService.findDTOsByUserIds(memberUserIds);
+
+    return UserMapper.fromEntityToPageableDTO(pageable, sponsorsByUserId, membersByUserId);
+  }
+
+  @Transactional
+  public MemberDTO patchSubscriberMemberByUserId(Long userId, SubscriberMemberUpdateDTO dto) {
+    return memberService.patchSubscriberMemberByUserId(userId, dto);
   }
 
   private UserTypeEnum resolveUserType(String type) {
@@ -197,15 +209,13 @@ public class AdminService {
       throw new BadRequestException(MessageErrorEnum.SPONSOR_DATA_REQUIRED.getMessage());
     }
     if (UserTypeEnum.MEMBER.equals(type) && dto.getMember() == null) {
-      throw new BadRequestException("Dados do membro são obrigatórios para usuários do tipo MEMBER.");
+      throw new BadRequestException(MessageErrorEnum.MEMBER_DATA_REQUIRED.getMessage());
     }
   }
 
   private boolean isSponsorType(UserTypeEnum type) {
     return UserTypeEnum.SPONSOR.equals(type) || UserTypeEnum.SPONSOR_MEMBER.equals(type);
   }
-
-  // --- Benefit ---
 
   public BenefitDTO createBenefit(BenefitCreateDTO dto) {
     return benefitService.create(dto);

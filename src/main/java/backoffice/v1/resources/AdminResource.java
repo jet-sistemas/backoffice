@@ -6,9 +6,8 @@ import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
 import backoffice.v1.dtos.common.PageDTO;
-import backoffice.v1.dtos.member.ListMembersQueryDTO;
-import backoffice.v1.dtos.member.MemberCreateDTO;
 import backoffice.v1.dtos.member.MemberDTO;
+import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
 import backoffice.v1.dtos.user.ListUsersQueryDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorDTO;
@@ -74,6 +73,7 @@ public class AdminResource implements AdminApi {
         query.resolveTier(),
         query.resolveEntityType(),
         query.resolvePersona(),
+        query.resolveMemberType(),
         query.getIsActive(),
         query.resolveSearch(),
         PageDTO.of(query.getPage(), query.getSize()));
@@ -82,26 +82,8 @@ public class AdminResource implements AdminApi {
   }
 
   @Override
-  public Response createMember(MemberCreateDTO dto) {
-    MemberDTO result = service.createMember(dto);
-    var response = ResponseModel.success(Status.CREATED.getStatusCode(), result);
-    return Response.status(Status.CREATED).entity(response).build();
-  }
-
-  @Override
-  public Response findMemberById(Long id) {
-    MemberDTO result = service.findMemberById(id);
-    var response = ResponseModel.success(Status.OK.getStatusCode(), result);
-    return Response.ok(response).build();
-  }
-
-  @Override
-  public Response listMembers(@Valid @BeanParam ListMembersQueryDTO query) {
-    Pageable<MemberDTO> result = service.listMembers(
-        query.resolveType(),
-        query.getIsActive(),
-        query.resolveSearch(),
-        PageDTO.of(query.getPage(), query.getSize()));
+  public Response patchSubscriberMemberByUserId(Long id, SubscriberMemberUpdateDTO dto) {
+    MemberDTO result = service.patchSubscriberMemberByUserId(id, dto);
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
     return Response.ok(response).build();
   }

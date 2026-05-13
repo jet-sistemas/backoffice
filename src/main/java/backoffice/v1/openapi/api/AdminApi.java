@@ -10,8 +10,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
-import backoffice.v1.dtos.member.ListMembersQueryDTO;
-import backoffice.v1.dtos.member.MemberCreateDTO;
+import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
 import backoffice.v1.dtos.user.ListUsersQueryDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorUpdateDTO;
@@ -19,7 +18,6 @@ import backoffice.v1.openapi.dto.EnvelopeBenefitDTO;
 import backoffice.v1.openapi.dto.EnvelopeBenefitListDTO;
 import backoffice.v1.openapi.dto.EnvelopeErrorDTO;
 import backoffice.v1.openapi.dto.EnvelopeMemberDTO;
-import backoffice.v1.openapi.dto.EnvelopeMemberListDTO;
 import backoffice.v1.openapi.dto.EnvelopeUserWithSponsorDTO;
 import backoffice.v1.openapi.dto.EnvelopeUserWithSponsorListDTO;
 import backoffice.v1.openapi.dto.EnvelopeVoid;
@@ -89,7 +87,7 @@ public interface AdminApi {
 	@PATCH
 	@Path("/user/{id}/deactivate")
 	@Tag(name = "Admin - Usuários")
-	@Operation(summary = "Desativar usuário", description = "Desativação lógica. Se SPONSOR, desativa também o patrocinador e seus benefícios.")
+	@Operation(summary = "Desativar usuário", description = "Desativação lógica. Se SPONSOR, desativa também o patrocinador e benefícios. Se MEMBER, desativa o registro de membro e status de assinante quando houver.")
 	@APIResponses({
 			@APIResponse(responseCode = "200", description = "Usuário desativado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeVoid.class)))
 	})
@@ -107,7 +105,7 @@ public interface AdminApi {
 	@DELETE
 	@Path("/user/{id}")
 	@Tag(name = "Admin - Usuários")
-	@Operation(summary = "Excluir usuário", description = "Exclusão física e irreversível. Remove em cascata sponsor e benefícios vinculados.")
+	@Operation(summary = "Excluir usuário", description = "Exclusão física e irreversível. Remove em cascata patrocinador/benefícios ou dados de membro conforme o tipo.")
 	@APIResponses({
 			@APIResponse(responseCode = "200", description = "Usuário excluído", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeVoid.class)))
 	})
@@ -116,7 +114,7 @@ public interface AdminApi {
 	@GET
 	@Path("/user/{id}")
 	@Tag(name = "Admin - Usuários")
-	@Operation(summary = "Buscar usuário por ID", description = "Retorna o usuário com dados de patrocinador embutidos quando aplicável.")
+	@Operation(summary = "Buscar usuário por ID", description = "Retorna o usuário com patrocinador e/ou membro embutidos quando aplicável.")
 	@APIResponses({
 			@APIResponse(responseCode = "200", description = "Usuário encontrado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeUserWithSponsorDTO.class)))
 	})
@@ -125,38 +123,20 @@ public interface AdminApi {
 	@GET
 	@Path("/user")
 	@Tag(name = "Admin - Usuários")
-	@Operation(summary = "Listar usuários", description = "Listagem paginada com filtros por tipo, tier, tipo de entidade e persona do patrocinador (persona aplicada só quando entityType = PERSON), status de ativação e busca textual opcional (nome da conta, nome público do patrocinador, documento ou código).")
+	@Operation(summary = "Listar usuários", description = "Listagem paginada com filtros por tipo, tier, entityType e persona do patrocinador, memberType (apenas com type=MEMBER), status da conta e busca textual. Com type=MEMBER, a busca inclui nome completo e WhatsApp do membro.")
 	@APIResponses({
 			@APIResponse(responseCode = "200", description = "Lista paginada de usuários", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeUserWithSponsorListDTO.class)))
 	})
 	Response listUsers(@Valid @BeanParam ListUsersQueryDTO query);
 
-	@POST
-	@Path("/member")
-	@Tag(name = "Admin - Membros")
-	@Operation(summary = "Criar membro", description = "Cria usuário do tipo MEMBER e registro de membro vinculado no mesmo fluxo transacional.")
+	@PATCH
+	@Path("/user/{id}/subscriber")
+	@Tag(name = "Admin - Usuários")
+	@Operation(summary = "Atualizar mensalidade do assinante", description = "Atualização parcial de subscriber_member. O id é o do usuário (tipo MEMBER, subtipo SUBSCRIBER).")
 	@APIResponses({
-			@APIResponse(responseCode = "201", description = "Membro criado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeMemberDTO.class)))
+			@APIResponse(responseCode = "200", description = "Assinante atualizado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeMemberDTO.class)))
 	})
-	Response createMember(@Valid MemberCreateDTO dto);
-
-	@GET
-	@Path("/member/{id}")
-	@Tag(name = "Admin - Membros")
-	@Operation(summary = "Buscar membro por ID", description = "Retorna os dados básicos do membro e da conta vinculada.")
-	@APIResponses({
-			@APIResponse(responseCode = "200", description = "Membro encontrado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeMemberDTO.class)))
-	})
-	Response findMemberById(@PathParam("id") Long id);
-
-	@GET
-	@Path("/member")
-	@Tag(name = "Admin - Membros")
-	@Operation(summary = "Listar membros", description = "Listagem paginada com filtros por tipo, status e busca textual.")
-	@APIResponses({
-			@APIResponse(responseCode = "200", description = "Lista paginada de membros", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeMemberListDTO.class)))
-	})
-	Response listMembers(@Valid @BeanParam ListMembersQueryDTO query);
+	Response patchSubscriberMemberByUserId(@PathParam("id") Long id, @Valid SubscriberMemberUpdateDTO dto);
 
 	@POST
 	@Path("/benefit")

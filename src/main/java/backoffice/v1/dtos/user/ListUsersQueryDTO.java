@@ -4,6 +4,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import backoffice.common.validators.EnumConstraint;
+import backoffice.v1.entities.enums.MemberTypeEnum;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
 import backoffice.v1.entities.enums.SponsorPersonaEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
@@ -42,6 +43,12 @@ public class ListUsersQueryDTO {
   @QueryParam("persona")
   @EnumConstraint(enumClass = SponsorPersonaEnum.class, message = "Persona inválida.")
   private String persona;
+
+  @Parameter(description = "Tipo de membro (SUBSCRIBER / SPONSORED); só aplicável quando type=MEMBER", schema = @Schema(enumeration = {
+      "SUBSCRIBER", "SPONSORED" }))
+  @QueryParam("memberType")
+  @EnumConstraint(enumClass = MemberTypeEnum.class, message = "Tipo de membro inválido.")
+  private String memberType;
 
   @Parameter(description = "Filtrar por conta ativa/inativa")
   @QueryParam("isActive")
@@ -86,6 +93,13 @@ public class ListUsersQueryDTO {
       return null;
     }
     return SponsorPersonaEnum.valueOf(persona.trim().toUpperCase());
+  }
+
+  public MemberTypeEnum resolveMemberType() {
+    if (memberType == null || memberType.isBlank()) {
+      return null;
+    }
+    return MemberTypeEnum.valueOf(memberType.trim().toUpperCase());
   }
 
   /**

@@ -82,13 +82,15 @@ class AdminResourceUserTest {
         "name", "Membro Teste",
         "document", uniqueDocument(),
         "code", code,
-        "type", "MEMBER"
-    ));
-    payload.put("member", Map.of(
-        "fullname", "Membro Teste Completo",
-        "whatsapp", "11999990000",
-        "type", "SUBSCRIBER"
-    ));
+        "type", "MEMBER"));
+    var member = new HashMap<String, Object>();
+    member.put("fullname", "Membro Teste Completo");
+    member.put("whatsapp", "119" + String.format("%09d", Math.abs(System.nanoTime() % 1_000_000_000L)));
+    member.put("type", "SUBSCRIBER");
+    member.put("subscriber", Map.of(
+        "monthlyFeeAmount", 50.00,
+        "billingDay", 10));
+    payload.put("member", member);
     return payload;
   }
 
@@ -484,7 +486,8 @@ class AdminResourceUserTest {
           .statusCode(201)
           .body("status", is("OK"))
           .body("data.email", is(email))
-          .body("data.type", is("MEMBER"));
+          .body("data.type", is("MEMBER"))
+          .body("data.member", notNullValue());
     }
   }
 

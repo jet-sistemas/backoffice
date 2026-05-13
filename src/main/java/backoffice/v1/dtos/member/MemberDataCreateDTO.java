@@ -2,6 +2,7 @@ package backoffice.v1.dtos.member;
 
 import backoffice.common.validators.EnumConstraint;
 import backoffice.v1.entities.enums.MemberTypeEnum;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,4 +25,10 @@ public class MemberDataCreateDTO {
   @NotBlank(message = "O tipo do membro é obrigatório")
   @EnumConstraint(enumClass = MemberTypeEnum.class, message = "Tipo de membro inválido.")
   private String type;
+
+  @Valid
+  private SubscriberDataCreateDTO subscriber;
+
+  @Valid
+  private SponsoredDataCreateDTO sponsored;
 }
