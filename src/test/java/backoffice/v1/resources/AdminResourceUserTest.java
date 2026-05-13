@@ -587,6 +587,38 @@ class AdminResourceUserTest {
           .then()
           .statusCode(404);
     }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("retorna 200 ao atualizar apenas dados do membro (PUT parcial)")
+    void updateMemberUserOnlyMemberData_returns200() {
+      String email = uniqueEmail("update-member-profile");
+      String code = uniqueCode();
+
+      Long userId = given()
+          .contentType(ContentType.JSON)
+          .body(memberUserPayload(email, code))
+          .when()
+          .post(BASE_PATH)
+          .then()
+          .statusCode(201)
+          .extract()
+          .jsonPath()
+          .getLong("data.id");
+
+      given()
+          .contentType(ContentType.JSON)
+          .body(Map.of("member", Map.of(
+              "fullname", "Nome Completo Atualizado",
+              "whatsapp", "21987654321")))
+          .when()
+          .put(BASE_PATH + "/" + userId)
+          .then()
+          .statusCode(200)
+          .body("status", is("OK"))
+          .body("data.member.fullname", is("Nome Completo Atualizado"))
+          .body("data.member.whatsapp", is("21987654321"));
+    }
   }
 
   @Nested

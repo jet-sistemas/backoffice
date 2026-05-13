@@ -3,6 +3,7 @@ package backoffice.v1.dtos.member;
 import java.time.Instant;
 import java.time.LocalDate;
 
+import backoffice.v1.dtos.user.UserMinDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +16,7 @@ import lombok.NoArgsConstructor;
 public class SponsoredMemberDTO {
   private Long memberId;
   private Long grantedByUserId;
+  private UserMinDTO grantedByUser;
   private LocalDate startAt;
   private LocalDate endAt;
   private String reason;

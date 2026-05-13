@@ -1,5 +1,6 @@
 package backoffice.v1.dtos.member;
 
+import backoffice.common.annotations.UnmaskNumber;
 import backoffice.common.validators.EnumConstraint;
 import backoffice.v1.entities.enums.MemberTypeEnum;
 import jakarta.validation.Valid;
@@ -20,6 +21,7 @@ public class MemberDataCreateDTO {
 
   @NotBlank(message = "O WhatsApp do membro é obrigatório")
   @Length(max = 50, message = "O WhatsApp deve ter no máximo 50 caracteres")
+  @UnmaskNumber
   private String whatsapp;
 
   @NotBlank(message = "O tipo do membro é obrigatório")

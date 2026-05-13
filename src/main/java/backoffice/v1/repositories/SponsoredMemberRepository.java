@@ -13,14 +13,20 @@ public class SponsoredMemberRepository
     implements PanacheRepositoryBase<SponsoredMember, SponsoredMember.SponsoredMemberId> {
 
   public Optional<SponsoredMember> findFirstByMemberId(Long memberId) {
-    return find("member.id = ?1", memberId).firstResultOptional();
+    return find(
+        "from SponsoredMember sm join fetch sm.grantedByUser where sm.member.id = ?1",
+        memberId)
+        .firstResultOptional();
   }
 
   public List<SponsoredMember> findByMemberIdIn(Collection<Long> memberIds) {
     if (memberIds == null || memberIds.isEmpty()) {
       return List.of();
     }
-    return find("member.id in ?1", memberIds).list();
+    return find(
+        "select distinct sm from SponsoredMember sm join fetch sm.grantedByUser where sm.member.id in ?1",
+        memberIds)
+        .list();
   }
 
   public boolean existsByMemberId(Long memberId) {

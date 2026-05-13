@@ -95,6 +95,10 @@ public class AdminService {
       }
     }
 
+    if (UserTypeEnum.MEMBER.equals(user.getType()) && dto.getMember() != null) {
+      memberService.updateMemberDataByUserId(userId, dto.getMember());
+    }
+
     MemberDTO memberDto = null;
     if (UserTypeEnum.MEMBER.equals(user.getType())) {
       memberDto = memberService.findDTOByUserId(userId);

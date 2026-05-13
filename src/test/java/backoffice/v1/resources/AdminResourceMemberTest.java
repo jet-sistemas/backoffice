@@ -261,7 +261,10 @@ class AdminResourceMemberTest {
           .statusCode(201)
           .body("data.member.type", is("SPONSORED"))
           .body("data.member.sponsored", notNullValue())
-          .body("data.member.sponsored.grantedByUserId", is(sponsorUserId));
+          .body("data.member.sponsored.grantedByUserId", is(sponsorUserId))
+          .body("data.member.sponsored.grantedByUser.id", is(sponsorUserId))
+          .body("data.member.sponsored.grantedByUser.email", is(sponsorEmail))
+          .body("data.member.sponsored.grantedByUser.name", is("Patroc Teste"));
     }
 
     @Test

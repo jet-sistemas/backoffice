@@ -18,6 +18,7 @@ import backoffice.common.utils.MemberBillingUtil;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.member.MemberDTO;
 import backoffice.v1.dtos.member.MemberDataCreateDTO;
+import backoffice.v1.dtos.member.MemberDataUpdateDTO;
 import backoffice.v1.dtos.member.SponsoredDataCreateDTO;
 import backoffice.v1.dtos.member.SubscriberDataCreateDTO;
 import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
@@ -260,6 +261,33 @@ public class MemberService {
     Member member = memberRepository.findByUserId(userId)
         .orElseThrow(() -> new NotFoundException(MessageErrorEnum.MEMBER_NOT_FOUND.getMessage()));
     return patchSubscriberMember(member.getId(), dto);
+  }
+
+  @Transactional
+  public MemberDTO updateMemberDataByUserId(Long userId, MemberDataUpdateDTO dto) {
+    if (dto.getFullname() == null && dto.getWhatsapp() == null) {
+      return findDTOByUserId(userId);
+    }
+    Member member = memberRepository.findByUserId(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.MEMBER_NOT_FOUND.getMessage()));
+    validateMemberForUser(member.getUser());
+
+    if (dto.getFullname() != null) {
+      String trimmed = dto.getFullname().trim();
+      if (trimmed.isEmpty()) {
+        throw new BadRequestException("O nome completo do associado é obrigatório.");
+      }
+      member.setFullname(trimmed);
+    }
+    if (dto.getWhatsapp() != null) {
+      if (memberRepository.existsByWhatsappAndIdNot(member.getId(), dto.getWhatsapp())) {
+        throw new ConflictException(MessageErrorEnum.MEMBER_ALREADY_EXISTS.getMessage());
+      }
+      member.setWhatsapp(dto.getWhatsapp());
+    }
+
+    memberRepository.persistAndFlush(member);
+    return loadMemberDto(member.getId());
   }
 
   public void deactivateByUserId(Long userId) {

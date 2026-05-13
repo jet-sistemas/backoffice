@@ -76,6 +76,7 @@ public class MemberMapper {
     return SponsoredMemberDTO.builder()
         .memberId(entity.getMember().getId())
         .grantedByUserId(entity.getGrantedByUser().getId())
+        .grantedByUser(UserMapper.fromEntityToMinimal(entity.getGrantedByUser()))
         .startAt(entity.getStartAt())
         .endAt(entity.getEndAt())
         .reason(entity.getReason())

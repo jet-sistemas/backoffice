@@ -28,6 +28,10 @@ public class MemberRepository implements PanacheRepositoryBase<Member, Long> {
     return count("whatsapp = ?1", whatsapp) > 0;
   }
 
+  public boolean existsByWhatsappAndIdNot(Long memberId, String whatsapp) {
+    return count("whatsapp = ?1 and id <> ?2", whatsapp, memberId) > 0;
+  }
+
   public Optional<Member> findByUserId(Long userId) {
     return find("user.id = ?1", userId).firstResultOptional();
   }
