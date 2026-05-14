@@ -14,6 +14,7 @@ import io.restassured.http.ContentType;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -606,18 +607,20 @@ class AdminResourceUserTest {
           .jsonPath()
           .getLong("data.id");
 
+      String newWhatsapp = "11" + String.format("%09d", ThreadLocalRandom.current().nextInt(0, 1_000_000_000));
+
       given()
           .contentType(ContentType.JSON)
           .body(Map.of("member", Map.of(
               "fullname", "Nome Completo Atualizado",
-              "whatsapp", "21987654321")))
+              "whatsapp", newWhatsapp)))
           .when()
           .put(BASE_PATH + "/" + userId)
           .then()
           .statusCode(200)
           .body("status", is("OK"))
           .body("data.member.fullname", is("Nome Completo Atualizado"))
-          .body("data.member.whatsapp", is("21987654321"));
+          .body("data.member.whatsapp", is(newWhatsapp));
     }
   }
 

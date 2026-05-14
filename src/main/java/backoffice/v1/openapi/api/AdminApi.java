@@ -11,6 +11,9 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
 import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
+import backoffice.v1.dtos.billing.ListSubscriberBillingQueryDTO;
+import backoffice.v1.dtos.billing.ListSubscriberPaymentEventsQueryDTO;
+import backoffice.v1.dtos.billing.SubscriberPaymentMarkPaidDTO;
 import backoffice.v1.dtos.user.ListUsersQueryDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorUpdateDTO;
@@ -18,6 +21,8 @@ import backoffice.v1.openapi.dto.EnvelopeBenefitDTO;
 import backoffice.v1.openapi.dto.EnvelopeBenefitListDTO;
 import backoffice.v1.openapi.dto.EnvelopeErrorDTO;
 import backoffice.v1.openapi.dto.EnvelopeMemberDTO;
+import backoffice.v1.openapi.dto.EnvelopeSubscriberBillingListResultDTO;
+import backoffice.v1.openapi.dto.EnvelopeSubscriberPaymentEventListDTO;
 import backoffice.v1.openapi.dto.EnvelopeUserWithSponsorDTO;
 import backoffice.v1.openapi.dto.EnvelopeUserWithSponsorListDTO;
 import backoffice.v1.openapi.dto.EnvelopeVoid;
@@ -137,6 +142,34 @@ public interface AdminApi {
 			@APIResponse(responseCode = "200", description = "Assinante atualizado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeMemberDTO.class)))
 	})
 	Response patchSubscriberMemberByUserId(@PathParam("id") Long id, @Valid SubscriberMemberUpdateDTO dto);
+
+	@PATCH
+	@Path("/user/{id}/subscriber/paid")
+	@Tag(name = "Admin - Usuários")
+	@Operation(summary = "Registrar pagamento manual da mensalidade", description = "Atualiza último pagamento, avança próximo vencimento e define status ACTIVE. O id é o do usuário (MEMBER assinante).")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Membro após pagamento", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeMemberDTO.class)))
+	})
+	Response markSubscriberPaidByUserId(@PathParam("id") Long id, @Valid SubscriberPaymentMarkPaidDTO dto);
+
+	@GET
+	@Path("/user/{id}/subscriber/events")
+	@Tag(name = "Admin - Usuários")
+	@Operation(summary = "Histórico de mensalidade do assinante", description = "Eventos de auditoria do subscriber_member (paginação 1-based).")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Lista paginada de eventos", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeSubscriberPaymentEventListDTO.class)))
+	})
+	Response listSubscriberPaymentEvents(@PathParam("id") Long id,
+			@Valid @BeanParam ListSubscriberPaymentEventsQueryDTO query);
+
+	@GET
+	@Path("/subscribers/billing")
+	@Tag(name = "Admin - Mensalidades")
+	@Operation(summary = "Listar assinantes para gestão de mensalidade", description = "Resumo por status e tabela paginada.")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Lista com resumo", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeSubscriberBillingListResultDTO.class)))
+	})
+	Response listSubscriberBilling(@Valid @BeanParam ListSubscriberBillingQueryDTO query);
 
 	@POST
 	@Path("/benefit")

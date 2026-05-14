@@ -16,6 +16,10 @@ import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.member.MemberDTO;
 import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
+import backoffice.v1.dtos.billing.ListSubscriberBillingQueryDTO;
+import backoffice.v1.dtos.billing.SubscriberBillingListResultDTO;
+import backoffice.v1.dtos.billing.SubscriberPaymentEventDTO;
+import backoffice.v1.dtos.billing.SubscriberPaymentMarkPaidDTO;
 import backoffice.v1.dtos.user.UserCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorDTO;
@@ -44,6 +48,9 @@ public class AdminService {
 
   @Inject
   private MemberService memberService;
+
+  @Inject
+  private MemberBillingService memberBillingService;
 
   @Transactional
   public UserWithSponsorDTO createUser(UserWithSponsorCreateDTO dto) {
@@ -193,8 +200,22 @@ public class AdminService {
   }
 
   @Transactional
-  public MemberDTO patchSubscriberMemberByUserId(Long userId, SubscriberMemberUpdateDTO dto) {
-    return memberService.patchSubscriberMemberByUserId(userId, dto);
+  public MemberDTO patchSubscriberMemberByUserId(Long userId, SubscriberMemberUpdateDTO dto, Long adminUserId) {
+    return memberService.patchSubscriberMemberByUserId(userId, dto, adminUserId);
+  }
+
+  @Transactional
+  public MemberDTO markSubscriberPaidByUserId(Long userId, SubscriberPaymentMarkPaidDTO dto, Long adminUserId) {
+    memberBillingService.markSubscriberPaidByUserId(userId, dto, adminUserId);
+    return memberService.findDTOByUserId(userId);
+  }
+
+  public Pageable<SubscriberPaymentEventDTO> listSubscriberPaymentEvents(Long userId, PageDTO pageDTO) {
+    return memberBillingService.listPaymentEventsByUserId(userId, pageDTO);
+  }
+
+  public SubscriberBillingListResultDTO listSubscriberBilling(ListSubscriberBillingQueryDTO query) {
+    return memberBillingService.listSubscriberBilling(query);
   }
 
   private UserTypeEnum resolveUserType(String type) {

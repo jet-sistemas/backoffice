@@ -9,6 +9,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
@@ -19,7 +20,9 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "subscriber_member")
+@Table(name = "subscriber_member", indexes = {
+    @Index(name = "idx_subscriber_member_status_next_due", columnList = "status,next_due_date")
+})
 @NoArgsConstructor
 @AllArgsConstructor
 @Data

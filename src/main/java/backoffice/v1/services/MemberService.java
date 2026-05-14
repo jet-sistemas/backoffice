@@ -22,6 +22,7 @@ import backoffice.v1.dtos.member.MemberDataUpdateDTO;
 import backoffice.v1.dtos.member.SponsoredDataCreateDTO;
 import backoffice.v1.dtos.member.SubscriberDataCreateDTO;
 import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
+import backoffice.v1.dtos.billing.SubscriberMemberConfigSnapshot;
 import backoffice.v1.entities.Member;
 import backoffice.v1.entities.SponsoredMember;
 import backoffice.v1.entities.SubscriberMember;
@@ -51,6 +52,9 @@ public class MemberService {
 
   @Inject
   private UserService userService;
+
+  @Inject
+  private MemberBillingService memberBillingService;
 
   @Inject
   private SponsorService sponsorService;
@@ -191,7 +195,7 @@ public class MemberService {
   }
 
   @Transactional
-  public MemberDTO patchSubscriberMember(Long memberId, SubscriberMemberUpdateDTO dto) {
+  public MemberDTO patchSubscriberMember(Long memberId, SubscriberMemberUpdateDTO dto, Long adminActorId) {
     Member member = memberRepository.findByIdOptional(memberId)
         .orElseThrow(() -> new NotFoundException(MessageErrorEnum.MEMBER_NOT_FOUND.getMessage()));
     validateMemberForUser(member.getUser());
@@ -200,6 +204,8 @@ public class MemberService {
     }
     SubscriberMember sub = subscriberMemberRepository.findByMemberId(memberId)
         .orElseThrow(() -> new NotFoundException(MessageErrorEnum.MEMBER_SUBSCRIBER_NOT_FOUND.getMessage()));
+
+    SubscriberMemberConfigSnapshot before = SubscriberMemberConfigSnapshot.from(sub);
 
     if (dto.getMonthlyFeeAmount() != null) {
       if (dto.getMonthlyFeeAmount().compareTo(BigDecimal.ZERO) <= 0) {
@@ -222,6 +228,7 @@ public class MemberService {
     }
 
     subscriberMemberRepository.persistAndFlush(sub);
+    memberBillingService.recordConfigChangeAfterPatch(sub, before, adminActorId);
     return loadMemberDto(memberId);
   }
 
@@ -257,10 +264,10 @@ public class MemberService {
     return out;
   }
 
-  public MemberDTO patchSubscriberMemberByUserId(Long userId, SubscriberMemberUpdateDTO dto) {
+  public MemberDTO patchSubscriberMemberByUserId(Long userId, SubscriberMemberUpdateDTO dto, Long adminActorId) {
     Member member = memberRepository.findByUserId(userId)
         .orElseThrow(() -> new NotFoundException(MessageErrorEnum.MEMBER_NOT_FOUND.getMessage()));
-    return patchSubscriberMember(member.getId(), dto);
+    return patchSubscriberMember(member.getId(), dto, adminActorId);
   }
 
   @Transactional
