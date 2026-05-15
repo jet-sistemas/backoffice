@@ -58,6 +58,8 @@ public class MemberBillingService {
 
   @Transactional
   public int refreshBillingStatuses() {
+    long startedAt = System.nanoTime();
+    LOG.infof("billing.status.job started");
     LocalDate today = LocalDate.now(ZoneId.systemDefault());
     LocalDate windowEnd = today.plusDays(dueSoonDays);
     int changed = 0;
@@ -65,6 +67,7 @@ public class MemberBillingService {
     changed += applyAutomationPass(today, windowEnd, MemberStatusEnum.DUE_SOON);
     changed += applyAutomationPass(today, windowEnd, MemberStatusEnum.ACTIVE);
     LOG.infof("billing.status.job finished; transitions=%d", changed);
+    LOG.infof("billing.status.job total execution time: %d ms", (System.nanoTime() - startedAt) / 1_000_000);
     return changed;
   }
 
