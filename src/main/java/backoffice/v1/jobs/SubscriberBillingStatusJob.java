@@ -13,7 +13,7 @@ public class SubscriberBillingStatusJob {
   @Inject
   MemberBillingService memberBillingService;
 
-  @Scheduled(cron = "${backoffice.billing.status-cron:0 0 5 1/5 * ?}", concurrentExecution = ConcurrentExecution.SKIP)
+  @Scheduled(cron = "${backoffice.billing.status-cron}", concurrentExecution = ConcurrentExecution.SKIP)
   void refreshStatuses() {
 
     memberBillingService.refreshBillingStatuses();
