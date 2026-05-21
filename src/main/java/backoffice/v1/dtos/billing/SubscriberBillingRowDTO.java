@@ -26,4 +26,6 @@ public class SubscriberBillingRowDTO {
   private MemberStatusEnum status;
   private LocalDate nextDueDate;
   private Instant lastPaidAt;
+  private Boolean canMarkPayment;
+  private String paymentMarkBlockedReason;
 }

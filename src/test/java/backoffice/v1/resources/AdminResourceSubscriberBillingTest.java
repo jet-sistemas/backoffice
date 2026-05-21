@@ -7,11 +7,13 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import io.restassured.http.ContentType;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assumptions;
 
 import backoffice.v1.services.MemberBillingService;
 import jakarta.inject.Inject;
@@ -82,11 +84,12 @@ class AdminResourceSubscriberBillingTest {
         .extract()
         .path("data.id");
 
+    LocalDate due = LocalDate.now();
     given()
         .contentType(ContentType.JSON)
         .body(Map.of(
-            "nextDueDate", "2020-01-10",
-            "status", "OVERDUE"))
+            "nextDueDate", due.toString(),
+            "status", "DUE_SOON"))
         .when()
         .patch(USER_PATH + "/" + userId + "/subscriber")
         .then()
@@ -110,6 +113,161 @@ class AdminResourceSubscriberBillingTest {
         .then()
         .statusCode(200)
         .body("data[0].eventType", is("PAYMENT_MARKED_PAID"));
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("OVERDUE fora da competência: 1º pagamento só lastPaidAt; 2º avança vencimento")
+  void markPaid_overduePastCompetence_twoSteps() {
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("overdue-defer"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of(
+            "nextDueDate", "2020-01-10",
+            "status", "OVERDUE"))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(200);
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of())
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber/paid")
+        .then()
+        .statusCode(200)
+        .body("data.subscriber.status", is("OVERDUE"))
+        .body("data.subscriber.nextDueDate", is("2020-01-10"));
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of())
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber/paid")
+        .then()
+        .statusCode(200)
+        .body("data.subscriber.status", is("ACTIVE"));
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("PATCH /user/{id}/subscriber/paid retorna 400 fora do mês de competência")
+  void markPaid_returns400OutsideCompetenceMonth() {
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("outside-comp"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    LocalDate nextMonth = LocalDate.now().plusMonths(1).withDayOfMonth(10);
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of(
+            "nextDueDate", nextMonth.toString(),
+            "status", "ACTIVE"))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(200);
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of())
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber/paid")
+        .then()
+        .statusCode(400);
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("PATCH /user/{id}/subscriber/paid retorna 400 quando ciclo já quitado (ACTIVE longe da janela)")
+  void markPaid_returns400WhenAlreadyPaidInCycle() {
+    Assumptions.assumeTrue(LocalDate.now().getDayOfMonth() <= 20);
+
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("already-paid"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    LocalDate today = LocalDate.now();
+    LocalDate due = today.plusDays(7);
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of(
+            "nextDueDate", due.toString(),
+            "status", "ACTIVE"))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(200);
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of())
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber/paid")
+        .then()
+        .statusCode(400);
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("PATCH subscriber altera dia de cobrança e recalcula vencimento quando ACTIVE")
+  void patchSubscriber_billingDayShiftRecalculatesDue() {
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("billing-shift"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    LocalDate nd = LocalDate.now().withDayOfMonth(10);
+    if (!nd.isAfter(LocalDate.now())) {
+      nd = nd.plusMonths(1);
+    }
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of(
+            "nextDueDate", nd.toString(),
+            "status", "ACTIVE"))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(200);
+
+    LocalDate expected = nd.withDayOfMonth(15);
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of("billingDay", 15))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(200)
+        .body("data.subscriber.billingDay", is(15))
+        .body("data.subscriber.nextDueDate", is(expected.toString()));
   }
 
   @Test

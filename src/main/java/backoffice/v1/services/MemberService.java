@@ -157,7 +157,15 @@ public class MemberService {
         .orElseThrow(() -> new NotFoundException(MessageErrorEnum.MEMBER_NOT_FOUND.getMessage()));
     SubscriberMember sub = subscriberMemberRepository.findByMemberId(memberId).orElse(null);
     SponsoredMember sp = sponsoredMemberRepository.findFirstByMemberId(memberId).orElse(null);
-    return MemberMapper.fromEntityToDTO(member, sub, sp);
+    MemberDTO dto = MemberMapper.fromEntityToDTO(member, sub, sp);
+    enrichSubscriberIfPresent(dto, sub);
+    return dto;
+  }
+
+  private void enrichSubscriberIfPresent(MemberDTO dto, SubscriberMember sub) {
+    if (sub != null && dto.getSubscriber() != null) {
+      memberBillingService.enrichSubscriberPaymentMarkFields(dto.getSubscriber(), sub);
+    }
   }
 
   public Optional<Member> findById(Long memberId) {
@@ -170,7 +178,9 @@ public class MemberService {
     validateMemberForUser(member.getUser());
     SubscriberMember sub = subscriberMemberRepository.findByMemberId(memberId).orElse(null);
     SponsoredMember sp = sponsoredMemberRepository.findFirstByMemberId(memberId).orElse(null);
-    return MemberMapper.fromEntityToDTO(member, sub, sp);
+    MemberDTO dto = MemberMapper.fromEntityToDTO(member, sub, sp);
+    enrichSubscriberIfPresent(dto, sub);
+    return dto;
   }
 
   public Pageable<MemberDTO> list(MemberTypeEnum type, Boolean isActive, String search, PageDTO pageDTO) {
@@ -183,7 +193,11 @@ public class MemberService {
         MemberMapper.indexSubscribersByMemberId(subscriberMemberRepository.findByMemberIdIn(ids));
     Map<Long, SponsoredMember> spMap = dedupeSponsoredByMember(
         sponsoredMemberRepository.findByMemberIdIn(ids));
-    return MemberMapper.fromEntityToPageableDTO(pageable, subMap, spMap);
+    Pageable<MemberDTO> page = MemberMapper.fromEntityToPageableDTO(pageable, subMap, spMap);
+    for (MemberDTO dto : page.getData()) {
+      enrichSubscriberIfPresent(dto, subMap.get(dto.getId()));
+    }
+    return page;
   }
 
   private static Map<Long, SponsoredMember> dedupeSponsoredByMember(List<SponsoredMember> list) {
@@ -207,23 +221,35 @@ public class MemberService {
 
     SubscriberMemberConfigSnapshot before = SubscriberMemberConfigSnapshot.from(sub);
 
+    MemberStatusEnum statusBeforePatch = sub.getStatus();
+    int previousBillingDay = sub.getBillingDay();
+
     if (dto.getMonthlyFeeAmount() != null) {
       if (dto.getMonthlyFeeAmount().compareTo(BigDecimal.ZERO) <= 0) {
         throw new BadRequestException("O valor da mensalidade deve ser maior que zero.");
       }
       sub.setMonthlyFeeAmount(dto.getMonthlyFeeAmount());
     }
+
+    boolean appliedBillingDayRecalc = false;
     if (dto.getBillingDay() != null) {
       int d = dto.getBillingDay();
       if (d < 1 || d > 28) {
         throw new BadRequestException("O dia de cobrança deve estar entre 1 e 28.");
       }
+      boolean billingDayChanging = d != previousBillingDay;
       sub.setBillingDay(d);
+      if (billingDayChanging && (statusBeforePatch == MemberStatusEnum.ACTIVE
+          || statusBeforePatch == MemberStatusEnum.DUE_SOON)) {
+        memberBillingService.applyBillingDayRecalc(sub, previousBillingDay, d);
+        appliedBillingDayRecalc = true;
+      }
     }
-    if (dto.getNextDueDate() != null) {
+
+    if (!appliedBillingDayRecalc && dto.getNextDueDate() != null) {
       sub.setNextDueDate(dto.getNextDueDate());
     }
-    if (dto.getStatus() != null && !dto.getStatus().isBlank()) {
+    if (!appliedBillingDayRecalc && dto.getStatus() != null && !dto.getStatus().isBlank()) {
       sub.setStatus(MemberStatusEnum.valueOf(dto.getStatus().trim().toUpperCase()));
     }
 
@@ -258,8 +284,9 @@ public class MemberService {
         sponsoredMemberRepository.findByMemberIdIn(memberIds));
     Map<Long, MemberDTO> out = new HashMap<>();
     for (Member m : members) {
-      out.put(m.getUser().getId(),
-          MemberMapper.fromEntityToDTO(m, subMap.get(m.getId()), spMap.get(m.getId())));
+      MemberDTO mdto = MemberMapper.fromEntityToDTO(m, subMap.get(m.getId()), spMap.get(m.getId()));
+      enrichSubscriberIfPresent(mdto, subMap.get(m.getId()));
+      out.put(m.getUser().getId(), mdto);
     }
     return out;
   }

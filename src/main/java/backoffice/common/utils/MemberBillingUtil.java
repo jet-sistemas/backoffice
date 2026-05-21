@@ -22,4 +22,19 @@ public final class MemberBillingUtil {
     }
     return candidate;
   }
+
+  /**
+   * Reposiciona o vencimento quando o dia de cobrança muda (regra ACTIVE/DUE_SOON).
+   * Dias limitados a 1–28 para evitar overflow em meses curtos.
+   */
+  public static LocalDate shiftNextDueDateForBillingDayChange(LocalDate currentNextDue, int oldBillingDay,
+      int newBillingDay) {
+    if (newBillingDay == oldBillingDay) {
+      return currentNextDue;
+    }
+    if (newBillingDay > oldBillingDay) {
+      return currentNextDue.withDayOfMonth(newBillingDay);
+    }
+    return currentNextDue.plusMonths(1).withDayOfMonth(newBillingDay);
+  }
 }

@@ -1,8 +1,11 @@
 package backoffice.common.mappers;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 import backoffice.common.database.Pageable;
+import backoffice.common.utils.MemberBillingRules;
 import backoffice.v1.dtos.billing.SubscriberBillingRowDTO;
 import backoffice.v1.dtos.billing.SubscriberPaymentEventDTO;
 import backoffice.v1.entities.SubscriberMember;
@@ -13,10 +16,11 @@ public final class SubscriberBillingMapper {
   private SubscriberBillingMapper() {
   }
 
-  public static SubscriberBillingRowDTO fromSubscriberMemberToBillingRow(SubscriberMember sm) {
+  public static SubscriberBillingRowDTO fromSubscriberMemberToBillingRow(SubscriberMember sm, int dueSoonDays) {
     var m = sm.getMember();
     var u = m.getUser();
-    return SubscriberBillingRowDTO.builder()
+    LocalDate today = LocalDate.now(ZoneId.systemDefault());
+    var row = SubscriberBillingRowDTO.builder()
         .userId(u.getId())
         .memberId(m.getId())
         .fullname(m.getFullname())
@@ -28,13 +32,18 @@ public final class SubscriberBillingMapper {
         .status(sm.getStatus())
         .nextDueDate(sm.getNextDueDate())
         .lastPaidAt(sm.getLastPaidAt())
+        .canMarkPayment(
+            MemberBillingRules.canMarkSubscriberPayment(sm.getStatus(), today, dueSoonDays, sm.getNextDueDate()))
+        .paymentMarkBlockedReason(
+            MemberBillingRules.paymentMarkBlockedReason(sm.getStatus(), today, dueSoonDays, sm.getNextDueDate()))
         .build();
+    return row;
   }
 
   public static Pageable<SubscriberBillingRowDTO> fromEntityPageableToBillingRowPage(
-      Pageable<SubscriberMember> pageable) {
+      Pageable<SubscriberMember> pageable, int dueSoonDays) {
     List<SubscriberBillingRowDTO> dtos = pageable.getData().stream()
-        .map(SubscriberBillingMapper::fromSubscriberMemberToBillingRow)
+        .map(sm -> fromSubscriberMemberToBillingRow(sm, dueSoonDays))
         .toList();
     return Pageable.<SubscriberBillingRowDTO>builder()
         .data(dtos)

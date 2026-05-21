@@ -36,6 +36,10 @@ public enum MessageErrorEnum {
       "O usuário concedente deve existir, ser patrocinador (SPONSOR ou SPONSOR_MEMBER) e possuir registro de patrocinador ativo."),
   MEMBER_SUBSCRIBER_NOT_FOUND("Este membro não possui cadastro de assinante."),
   MEMBER_SUBSCRIBER_UPDATE_INVALID("Não é possível atualizar mensalidade: membro não é assinante."),
+  SUBSCRIBER_PAYMENT_ALREADY_REGISTERED("Pagamento deste ciclo já registrado."),
+  SUBSCRIBER_PAYMENT_OUTSIDE_COMPETENCE_MONTH(
+      "Só é possível registrar pagamento no mês de competência do vencimento."),
+  SUBSCRIBER_PAYMENT_INACTIVE("Não é possível registrar pagamento: mensalidade inativa."),
   MEMBER_TYPE_FILTER_REQUIRES_USER_TYPE_MEMBER(
       "O filtro de tipo de membro (memberType) só pode ser usado quando type=MEMBER."),
 

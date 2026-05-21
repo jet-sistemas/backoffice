@@ -22,4 +22,6 @@ public class SubscriberMemberDTO {
   private LocalDate nextDueDate;
   private Instant lastPaidAt;
   private Instant createdAt;
+  private Boolean canMarkPayment;
+  private String paymentMarkBlockedReason;
 }

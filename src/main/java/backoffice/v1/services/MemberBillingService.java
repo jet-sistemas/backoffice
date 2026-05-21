@@ -3,6 +3,7 @@ package backoffice.v1.services;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneId;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -15,6 +16,8 @@ import backoffice.common.exceptions.customs.ConflictException;
 import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.mappers.SubscriberBillingMapper;
 import backoffice.common.utils.MemberBillingRules;
+import backoffice.common.utils.MemberBillingUtil;
+import backoffice.v1.dtos.member.SubscriberMemberDTO;
 import backoffice.v1.dtos.billing.ListSubscriberBillingQueryDTO;
 import backoffice.v1.dtos.billing.SubscriberBillingListResultDTO;
 import backoffice.v1.dtos.billing.SubscriberBillingSummaryDTO;
@@ -71,6 +74,26 @@ public class MemberBillingService {
     return changed;
   }
 
+  /**
+   * Recalcula vencimento e status quando o dia de cobrança muda (membro ACTIVE ou DUE_SOON antes do patch).
+   */
+  public void applyBillingDayRecalc(SubscriberMember sub, int oldBillingDay, int newBillingDay) {
+    LocalDate shifted = MemberBillingUtil.shiftNextDueDateForBillingDayChange(sub.getNextDueDate(), oldBillingDay,
+        newBillingDay);
+    sub.setNextDueDate(shifted);
+    LocalDate today = LocalDate.now(ZoneId.systemDefault());
+    sub.setStatus(MemberBillingRules.expectedAutomationStatus(today, dueSoonDays, shifted));
+  }
+
+  public void enrichSubscriberPaymentMarkFields(SubscriberMemberDTO dto, SubscriberMember entity) {
+    LocalDate today = LocalDate.now(ZoneId.systemDefault());
+    boolean can = MemberBillingRules.canMarkSubscriberPayment(entity.getStatus(), today, dueSoonDays,
+        entity.getNextDueDate());
+    dto.setCanMarkPayment(can);
+    dto.setPaymentMarkBlockedReason(
+        MemberBillingRules.paymentMarkBlockedReason(entity.getStatus(), today, dueSoonDays, entity.getNextDueDate()));
+  }
+
   private int applyAutomationPass(LocalDate today, LocalDate windowEnd, MemberStatusEnum phase) {
     int changed = 0;
     for (SubscriberMember s : subscriberMemberRepository.listNeedingAutomationStatus(today, windowEnd, phase)) {
@@ -109,22 +132,50 @@ public class MemberBillingService {
     }
 
     LocalDate today = LocalDate.now(ZoneId.systemDefault());
+    ZoneId zone = ZoneId.systemDefault();
     SubscriberMemberConfigSnapshot before = SubscriberMemberConfigSnapshot.from(sub);
 
-    LocalDate nd = sub.getNextDueDate().plusMonths(1);
-    while (nd.isBefore(today)) {
-      nd = nd.plusMonths(1);
+    MemberStatusEnum st = sub.getStatus();
+    if (st == MemberStatusEnum.INACTIVE) {
+      throw new BadRequestException(MessageErrorEnum.SUBSCRIBER_PAYMENT_INACTIVE.getMessage());
     }
 
-    sub.setLastPaidAt(paidAt);
-    sub.setNextDueDate(nd);
-    sub.setStatus(MemberStatusEnum.ACTIVE);
+    if (st == MemberStatusEnum.ACTIVE || st == MemberStatusEnum.DUE_SOON) {
+      if (!MemberBillingRules.canMarkSubscriberPayment(st, today, dueSoonDays, sub.getNextDueDate())) {
+        String msg = MemberBillingRules.paymentMarkBlockedReason(st, today, dueSoonDays, sub.getNextDueDate());
+        throw new BadRequestException(msg != null ? msg : MessageErrorEnum.SUBSCRIBER_PAYMENT_ALREADY_REGISTERED.getMessage());
+      }
+      advanceDueDateAfterPayment(sub, paidAt, today);
+    } else if (st == MemberStatusEnum.OVERDUE) {
+      LocalDate nextDue = sub.getNextDueDate();
+      boolean inCompetence = YearMonth.from(today).equals(YearMonth.from(nextDue));
+      boolean overduePastCompetence = YearMonth.from(today).isAfter(YearMonth.from(nextDue));
+      LocalDate lastPaidLocal = sub.getLastPaidAt() != null ? sub.getLastPaidAt().atZone(zone).toLocalDate() : null;
+      boolean deferredAdvance = MemberBillingRules.overdueEligibleForDeferredDueAdvance(nextDue, lastPaidLocal);
+
+      if (inCompetence || !overduePastCompetence || deferredAdvance) {
+        advanceDueDateAfterPayment(sub, paidAt, today);
+      } else {
+        sub.setLastPaidAt(paidAt);
+      }
+    }
+
     subscriberMemberRepository.persistAndFlush(sub);
 
     User admin = resolveAdminActor(adminUserId);
     SubscriberMemberConfigSnapshot after = SubscriberMemberConfigSnapshot.from(sub);
     persistSubscriberEvent(sub, before, after, SubscriberPaymentEventTypeEnum.PAYMENT_MARKED_PAID, amount,
         dto.getNote(), admin);
+  }
+
+  private static void advanceDueDateAfterPayment(SubscriberMember sub, Instant paidAt, LocalDate today) {
+    LocalDate nd = sub.getNextDueDate().plusMonths(1);
+    while (nd.isBefore(today)) {
+      nd = nd.plusMonths(1);
+    }
+    sub.setLastPaidAt(paidAt);
+    sub.setNextDueDate(nd);
+    sub.setStatus(MemberStatusEnum.ACTIVE);
   }
 
   @Transactional
@@ -161,7 +212,7 @@ public class MemberBillingService {
         query.getDueTo(),
         query.resolveSearch(),
         pageDTO);
-    var rowPage = SubscriberBillingMapper.fromEntityPageableToBillingRowPage(entityPage);
+    var rowPage = SubscriberBillingMapper.fromEntityPageableToBillingRowPage(entityPage, dueSoonDays);
 
     var summary = SubscriberBillingSummaryDTO.builder()
         .overdueCount(subscriberMemberRepository.countWithStatusEnum(MemberStatusEnum.OVERDUE))
