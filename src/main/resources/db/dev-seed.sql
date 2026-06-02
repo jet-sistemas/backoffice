@@ -3,15 +3,23 @@
 -- =============================================================================
 -- Pré-requisito: schema criado pelo Quarkus (hibernate-orm.database.generation=update)
 --
--- Executar:
+-- Repopular do zero (limpar seed antes):
+--   psql "postgresql://backoffice:backoffice@localhost:5432/backoffice" \
+--     -f backoffice/src/main/resources/db/dev-clear.sql
+--   psql "postgresql://backoffice:backoffice@localhost:5432/backoffice" \
+--     -f backoffice/src/main/resources/db/dev-seed.sql
+--
+-- Só popular (idempotente):
 --   psql "postgresql://backoffice:backoffice@localhost:5432/backoffice" \
 --     -f backoffice/src/main/resources/db/dev-seed.sql
 --
 --   docker compose -f backoffice/docker-compose.yml exec -T postgres \
---     psql -U backoffice -d backoffice \
---     < backoffice/src/main/resources/db/dev-seed.sql
+--     psql -U backoffice -d backoffice < backoffice/src/main/resources/db/dev-clear.sql
+--   docker compose -f backoffice/docker-compose.yml exec -T postgres \
+--     psql -U backoffice -d backoffice < backoffice/src/main/resources/db/dev-seed.sql
 --
 -- Idempotente: reexecutar não duplica (guards por email / whatsapp / nota seed).
+-- Dados: 21 users, 10 sponsors, 100 benefits (10/sponsor), 10 members, billing, eventos.
 -- Senha de todos os usuários: mesmo plaintext usado para gerar o hash abaixo.
 -- =============================================================================
 
@@ -23,6 +31,7 @@ SELECT setval('sponsors_seq', COALESCE((SELECT MAX(id) FROM sponsors), 1));
 SELECT setval('members_seq', COALESCE((SELECT MAX(id) FROM members), 1));
 SELECT setval('subscriber_member_seq', COALESCE((SELECT MAX(id) FROM subscriber_member), 1));
 SELECT setval('subscriber_payment_event_seq', COALESCE((SELECT MAX(id) FROM subscriber_payment_event), 1));
+SELECT setval('benefits_seq', COALESCE((SELECT MAX(id) FROM benefits), 1));
 
 -- Parâmetros de datas relativas (due_soon_days = 5)
 CREATE TEMP TABLE IF NOT EXISTS seed_dates (
@@ -110,6 +119,27 @@ FROM (VALUES
 ) AS v(email, public_name, tier, entity_type, persona, whatsapp, is_active)
 JOIN users u ON u.email = v.email
 WHERE NOT EXISTS (SELECT 1 FROM sponsors s WHERE s.whatsapp = v.whatsapp);
+
+-- -----------------------------------------------------------------------------
+-- 2b) BENEFITS (100 — 10 por sponsor)
+-- -----------------------------------------------------------------------------
+INSERT INTO benefits (id, sponsor_id, name, description, address, is_active, created_at, updated_at)
+SELECT
+  nextval('benefits_seq'),
+  s.id,
+  'dev-seed-benefit-' || s.whatsapp || '-' || lpad(n::text, 2, '0'),
+  'Benefício seed ' || n || ' — ' || s.tier || ' / ' || s.entity_type,
+  'Rua Seed ' || n || ', 100 — Patrocinador ' || s.public_name,
+  s.is_active,
+  NOW(), NOW()
+FROM sponsors s
+CROSS JOIN generate_series(1, 10) AS n
+WHERE s.whatsapp BETWEEN '11990000001' AND '11990000010'
+  AND NOT EXISTS (
+    SELECT 1 FROM benefits b
+    WHERE b.sponsor_id = s.id
+      AND b.name = 'dev-seed-benefit-' || s.whatsapp || '-' || lpad(n::text, 2, '0')
+  );
 
 -- -----------------------------------------------------------------------------
 -- 3) MEMBERS (10)
@@ -395,6 +425,14 @@ UPDATE sponsors
 SET is_active = false, last_active_sponsorship = COALESCE(last_active_sponsorship, NOW())
 WHERE whatsapp = '11990000009';
 
+-- Benefícios seed espelham is_active do sponsor (inclui reexecução / ajustes acima)
+UPDATE benefits b
+SET is_active = s.is_active
+FROM sponsors s
+WHERE b.sponsor_id = s.id
+  AND b.name LIKE 'dev-seed-benefit-%'
+  AND b.is_active IS DISTINCT FROM s.is_active;
+
 -- Garante hash de senha no ADM pré-existente
 UPDATE users
 SET password = '$2a$12$AUBavi4Bm4tmciYwUKvK3O.RRvOx3LlSAe.fT8p3OE/ZLa8yEYU/q',
@@ -410,6 +448,12 @@ SELECT setval('sponsors_seq', COALESCE((SELECT MAX(id) FROM sponsors), 1));
 SELECT setval('members_seq', COALESCE((SELECT MAX(id) FROM members), 1));
 SELECT setval('subscriber_member_seq', COALESCE((SELECT MAX(id) FROM subscriber_member), 1));
 SELECT setval('subscriber_payment_event_seq', COALESCE((SELECT MAX(id) FROM subscriber_payment_event), 1));
+SELECT setval('benefits_seq', COALESCE((SELECT MAX(id) FROM benefits), 1));
+
+-- Verificação (opcional):
+-- SELECT s.whatsapp, COUNT(b.id) FROM sponsors s
+--   LEFT JOIN benefits b ON b.sponsor_id = s.id AND b.name LIKE 'dev-seed-benefit-%'
+--   WHERE s.whatsapp BETWEEN '11990000001' AND '11990000010' GROUP BY 1 ORDER BY 1;
 
 DROP TABLE IF EXISTS seed_dates;
 
