@@ -13,10 +13,8 @@
 --   psql "postgresql://backoffice:backoffice@localhost:5432/backoffice" \
 --     -f backoffice/src/main/resources/db/dev-seed.sql
 --
---   docker compose -f backoffice/docker-compose.yml exec -T postgres \
---     psql -U backoffice -d backoffice < backoffice/src/main/resources/db/dev-clear.sql
---   docker compose -f backoffice/docker-compose.yml exec -T postgres \
---     psql -U backoffice -d backoffice < backoffice/src/main/resources/db/dev-seed.sql
+-- docker compose exec -T postgres psql -U backoffice -d backoffice < src/main/resources/db/dev-clear.sql
+-- docker compose exec -T postgres psql -U backoffice -d backoffice < src/main/resources/db/dev-seed.sql
 --
 -- Idempotente: reexecutar não duplica (guards por email / whatsapp / nota seed).
 -- Dados: 21 users, 10 sponsors, 100 benefits (10/sponsor), 10 members, billing, eventos.
