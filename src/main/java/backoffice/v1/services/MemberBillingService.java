@@ -58,11 +58,18 @@ public class MemberBillingService {
   @ConfigProperty(name = "backoffice.billing.due-soon-days", defaultValue = "5")
   int dueSoonDays;
 
+  @ConfigProperty(name = "backoffice.billing.zone-id", defaultValue = "America/Sao_Paulo")
+  String billingZoneId;
+
+  private ZoneId billingZone() {
+    return ZoneId.of(billingZoneId);
+  }
+
   @Transactional
   public int refreshBillingStatuses() {
     long startedAt = System.nanoTime();
     LOG.infof("billing.status.job started");
-    LocalDate today = LocalDate.now(ZoneId.systemDefault());
+    LocalDate today = LocalDate.now(billingZone());
     LocalDate windowEnd = today.plusDays(dueSoonDays);
     int changed = 0;
     changed += applyAutomationPass(today, windowEnd, MemberStatusEnum.OVERDUE);
@@ -80,19 +87,17 @@ public class MemberBillingService {
     LocalDate shifted = MemberBillingUtil.shiftNextDueDateForBillingDayChange(sub.getNextDueDate(), oldBillingDay,
         newBillingDay);
     sub.setNextDueDate(shifted);
-    LocalDate today = LocalDate.now(ZoneId.systemDefault());
+    LocalDate today = LocalDate.now(billingZone());
     sub.setStatus(MemberBillingRules.expectedAutomationStatus(today, dueSoonDays, shifted));
   }
 
   public void enrichSubscriberPaymentMarkFields(SubscriberMemberDTO dto, SubscriberMember entity) {
-    LocalDate today = LocalDate.now(ZoneId.systemDefault());
+    LocalDate today = LocalDate.now(billingZone());
     MemberStatusEnum effective = MemberBillingRules.resolveEffectiveStatus(
         entity.getStatus(), today, dueSoonDays, entity.getNextDueDate());
     dto.setStatus(effective);
-    dto.setCanMarkPayment(
-        MemberBillingRules.canMarkSubscriberPayment(effective, today, dueSoonDays, entity.getNextDueDate()));
-    dto.setPaymentMarkBlockedReason(
-        MemberBillingRules.paymentMarkBlockedReason(effective, today, dueSoonDays, entity.getNextDueDate()));
+    dto.setCanMarkPayment(MemberBillingRules.canMarkSubscriberPayment(effective));
+    dto.setPaymentMarkBlockedReason(MemberBillingRules.paymentMarkBlockedReason(effective));
   }
 
   private int applyAutomationPass(LocalDate today, LocalDate windowEnd, MemberStatusEnum phase) {
@@ -132,7 +137,7 @@ public class MemberBillingService {
       throw new BadRequestException("O valor pago deve ser maior que zero.");
     }
 
-    LocalDate today = LocalDate.now(ZoneId.systemDefault());
+    LocalDate today = LocalDate.now(billingZone());
 
     MemberStatusEnum effective = MemberBillingRules.resolveEffectiveStatus(
         sub.getStatus(), today, dueSoonDays, sub.getNextDueDate());
@@ -148,8 +153,8 @@ public class MemberBillingService {
     }
 
     if (effective == MemberStatusEnum.ACTIVE || effective == MemberStatusEnum.DUE_SOON) {
-      if (!MemberBillingRules.canMarkSubscriberPayment(effective, today, dueSoonDays, sub.getNextDueDate())) {
-        String msg = MemberBillingRules.paymentMarkBlockedReason(effective, today, dueSoonDays, sub.getNextDueDate());
+      if (!MemberBillingRules.canMarkSubscriberPayment(effective)) {
+        String msg = MemberBillingRules.paymentMarkBlockedReason(effective);
         throw new BadRequestException(
             msg != null ? msg : MessageErrorEnum.SUBSCRIBER_PAYMENT_ALREADY_REGISTERED.getMessage());
       }
@@ -172,6 +177,11 @@ public class MemberBillingService {
         dto.getNote(), admin);
   }
 
+  /**
+   * Avança {@code nextDueDate} após pagamento. O catch-up consolida meses devidos em um único
+   * evento {@code PAYMENT_MARKED_PAID} com o {@code amount} da mensalidade vigente — sem lançamento
+   * por competência (dívida técnica F6).
+   */
   private void advanceDueDateAfterPayment(SubscriberMember sub, Instant paidAt, LocalDate today) {
     LocalDate nd = MemberBillingUtil.advanceNextDueDate(sub.getNextDueDate(), sub.getBillingDay(), today);
     sub.setLastPaidAt(paidAt);
@@ -208,13 +218,14 @@ public class MemberBillingService {
   public SubscriberBillingListResultDTO listSubscriberBilling(ListSubscriberBillingQueryDTO query) {
     var statusFilter = query.resolveStatusFilter().resolveMemberStatusOrNull();
     PageDTO pageDTO = query.resolvePage();
+    LocalDate today = LocalDate.now(billingZone());
     var entityPage = subscriberMemberRepository.findSubscriberBillingPage(
         statusFilter,
         query.getDueFrom(),
         query.getDueTo(),
         query.resolveSearch(),
         pageDTO);
-    var rowPage = SubscriberBillingMapper.fromEntityPageableToBillingRowPage(entityPage, dueSoonDays);
+    var rowPage = SubscriberBillingMapper.fromEntityPageableToBillingRowPage(entityPage, dueSoonDays, today);
 
     var summary = SubscriberBillingSummaryDTO.builder()
         .overdueCount(subscriberMemberRepository.countWithStatusEnum(MemberStatusEnum.OVERDUE))

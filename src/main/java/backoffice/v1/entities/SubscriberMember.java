@@ -13,6 +13,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -51,4 +52,9 @@ public class SubscriberMember extends BaseEntity {
   @Column(nullable = false)
   @Builder.Default
   private boolean overdueDueAdvancePending = false;
+
+  @Version
+  @Column(nullable = false)
+  @Builder.Default
+  private long version = 0L;
 }

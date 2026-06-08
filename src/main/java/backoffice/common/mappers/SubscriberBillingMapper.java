@@ -1,7 +1,6 @@
 package backoffice.common.mappers;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 import backoffice.common.database.Pageable;
@@ -17,10 +16,10 @@ public final class SubscriberBillingMapper {
   private SubscriberBillingMapper() {
   }
 
-  public static SubscriberBillingRowDTO fromSubscriberMemberToBillingRow(SubscriberMember sm, int dueSoonDays) {
+  public static SubscriberBillingRowDTO fromSubscriberMemberToBillingRow(
+      SubscriberMember sm, int dueSoonDays, LocalDate today) {
     var m = sm.getMember();
     var u = m.getUser();
-    LocalDate today = LocalDate.now(ZoneId.systemDefault());
     MemberStatusEnum effective = MemberBillingRules.resolveEffectiveStatus(
         sm.getStatus(), today, dueSoonDays, sm.getNextDueDate());
     var row = SubscriberBillingRowDTO.builder()
@@ -35,18 +34,16 @@ public final class SubscriberBillingMapper {
         .status(effective)
         .nextDueDate(sm.getNextDueDate())
         .lastPaidAt(sm.getLastPaidAt())
-        .canMarkPayment(
-            MemberBillingRules.canMarkSubscriberPayment(effective, today, dueSoonDays, sm.getNextDueDate()))
-        .paymentMarkBlockedReason(
-            MemberBillingRules.paymentMarkBlockedReason(effective, today, dueSoonDays, sm.getNextDueDate()))
+        .canMarkPayment(MemberBillingRules.canMarkSubscriberPayment(effective))
+        .paymentMarkBlockedReason(MemberBillingRules.paymentMarkBlockedReason(effective))
         .build();
     return row;
   }
 
   public static Pageable<SubscriberBillingRowDTO> fromEntityPageableToBillingRowPage(
-      Pageable<SubscriberMember> pageable, int dueSoonDays) {
+      Pageable<SubscriberMember> pageable, int dueSoonDays, LocalDate today) {
     List<SubscriberBillingRowDTO> dtos = pageable.getData().stream()
-        .map(sm -> fromSubscriberMemberToBillingRow(sm, dueSoonDays))
+        .map(sm -> fromSubscriberMemberToBillingRow(sm, dueSoonDays, today))
         .toList();
     return Pageable.<SubscriberBillingRowDTO>builder()
         .data(dtos)

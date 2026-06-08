@@ -1,6 +1,7 @@
 package backoffice.common.utils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
 
@@ -67,36 +68,27 @@ class MemberBillingRulesTest {
             MemberStatusEnum.ACTIVE, today, 5, LocalDate.of(2026, 6, 25)));
   }
 
-  // --- canMarkSubscriberPayment ---
+  // --- canMarkSubscriberPayment (F5) ---
 
   @Test
-  void cannotMarkWhenOutsideCompetenceMonth() {
-    LocalDate today = LocalDate.of(2026, 6, 15);
-    assertEquals(false,
-        MemberBillingRules.canMarkSubscriberPayment(MemberStatusEnum.ACTIVE, today, 5, LocalDate.of(2026, 7, 10)));
+  void canMark_overdueAndDueSoon() {
+    assertTrue(MemberBillingRules.canMarkSubscriberPayment(MemberStatusEnum.OVERDUE));
+    assertTrue(MemberBillingRules.canMarkSubscriberPayment(MemberStatusEnum.DUE_SOON));
   }
 
   @Test
-  void cannotMarkActiveWhenPaidAhead() {
-    LocalDate today = LocalDate.of(2026, 6, 15);
-    LocalDate due = LocalDate.of(2026, 6, 25);
-    assertEquals(false,
-        MemberBillingRules.canMarkSubscriberPayment(MemberStatusEnum.ACTIVE, today, 5, due));
+  void cannotMark_activeAndInactive() {
+    assertEquals(false, MemberBillingRules.canMarkSubscriberPayment(MemberStatusEnum.ACTIVE));
+    assertEquals(false, MemberBillingRules.canMarkSubscriberPayment(MemberStatusEnum.INACTIVE));
   }
 
   @Test
-  void canMarkDueSoonInCompetenceMonth() {
-    LocalDate today = LocalDate.of(2026, 6, 15);
-    LocalDate due = LocalDate.of(2026, 6, 18);
-    assertEquals(true,
-        MemberBillingRules.canMarkSubscriberPayment(MemberStatusEnum.DUE_SOON, today, 5, due));
-  }
-
-  @Test
-  void overdueAlwaysCanMark() {
-    LocalDate today = LocalDate.of(2026, 6, 15);
-    assertEquals(true,
-        MemberBillingRules.canMarkSubscriberPayment(MemberStatusEnum.OVERDUE, today, 5, LocalDate.of(2020, 1, 10)));
+  void canMarkDueSoonCrossMonthAtMonthBoundary() {
+    LocalDate today = LocalDate.of(2026, 6, 29);
+    MemberStatusEnum effective = MemberBillingRules.resolveEffectiveStatus(
+        MemberStatusEnum.ACTIVE, today, 5, LocalDate.of(2026, 7, 2));
+    assertEquals(MemberStatusEnum.DUE_SOON, effective);
+    assertTrue(MemberBillingRules.canMarkSubscriberPayment(effective));
   }
 
   // --- shouldAdvanceOverduePayment (F3) ---

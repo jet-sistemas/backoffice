@@ -163,8 +163,8 @@ class AdminResourceSubscriberBillingTest {
 
   @Test
   @TestSecurity(user = "admin", roles = "ADM")
-  @DisplayName("PATCH /user/{id}/subscriber/paid retorna 400 fora do mês de competência")
-  void markPaid_returns400OutsideCompetenceMonth() {
+  @DisplayName("PATCH /user/{id}/subscriber/paid retorna 400 quando status efetivo é ACTIVE (ciclo já quitado)")
+  void markPaid_returns400WhenEffectiveActive() {
     int userId = given()
         .contentType(ContentType.JSON)
         .body(memberPayload(uniqueEmail("outside-comp"), uniqueCode(), uniqueWhatsapp()))

@@ -39,36 +39,17 @@ public final class MemberBillingRules {
     return expectedAutomationStatus(today, dueSoonDays, nextDueDate);
   }
 
-  public static boolean canMarkSubscriberPayment(MemberStatusEnum status, LocalDate today, int dueSoonDays,
-      LocalDate nextDueDate) {
-    if (status == MemberStatusEnum.INACTIVE) {
-      return false;
-    }
-    if (status == MemberStatusEnum.OVERDUE) {
-      return true;
-    }
-    if (!YearMonth.from(today).equals(YearMonth.from(nextDueDate))) {
-      return false;
-    }
-    if (status == MemberStatusEnum.ACTIVE && nextDueDate.isAfter(today.plusDays(dueSoonDays))) {
-      return false;
-    }
-    return true;
+  public static boolean canMarkSubscriberPayment(MemberStatusEnum effectiveStatus) {
+    return effectiveStatus == MemberStatusEnum.OVERDUE
+        || effectiveStatus == MemberStatusEnum.DUE_SOON;
   }
 
-  /** Mensagem PT-BR para UI quando {@link #canMarkSubscriberPayment} é falso; {@code null} se pode marcar ou OVERDUE. */
-  public static String paymentMarkBlockedReason(MemberStatusEnum status, LocalDate today, int dueSoonDays,
-      LocalDate nextDueDate) {
-    if (status == MemberStatusEnum.INACTIVE) {
+  /** Mensagem PT-BR para UI quando {@link #canMarkSubscriberPayment} é falso; {@code null} se pode marcar. */
+  public static String paymentMarkBlockedReason(MemberStatusEnum effectiveStatus) {
+    if (effectiveStatus == MemberStatusEnum.INACTIVE) {
       return MessageErrorEnum.SUBSCRIBER_PAYMENT_INACTIVE.getMessage();
     }
-    if (status == MemberStatusEnum.OVERDUE) {
-      return null;
-    }
-    if (!YearMonth.from(today).equals(YearMonth.from(nextDueDate))) {
-      return MessageErrorEnum.SUBSCRIBER_PAYMENT_OUTSIDE_COMPETENCE_MONTH.getMessage();
-    }
-    if (status == MemberStatusEnum.ACTIVE && nextDueDate.isAfter(today.plusDays(dueSoonDays))) {
+    if (effectiveStatus == MemberStatusEnum.ACTIVE) {
       return MessageErrorEnum.SUBSCRIBER_PAYMENT_ALREADY_REGISTERED.getMessage();
     }
     return null;

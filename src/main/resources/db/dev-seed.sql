@@ -18,7 +18,7 @@
 --
 -- Idempotente: reexecutar não duplica (guards por email / whatsapp / nota seed).
 -- Dados: 21 users, 10 sponsors, 100 benefits (10/sponsor), 10 members, billing, eventos.
--- subscriber_member inclui overdue_due_advance_pending (F3 — ciclo OVERDUE em duas etapas).
+-- subscriber_member inclui overdue_due_advance_pending (F3) e version (F4 optimistic lock).
 -- Senha de todos os usuários: mesmo plaintext usado para gerar o hash abaixo.
 -- =============================================================================
 
@@ -165,10 +165,10 @@ WHERE NOT EXISTS (SELECT 1 FROM members m WHERE m.whatsapp = v.whatsapp);
 -- -----------------------------------------------------------------------------
 INSERT INTO subscriber_member (
   id, member_id, monthly_fee_amount, billing_day, status, next_due_date,
-  last_paid_at, overdue_due_advance_pending, created_at, updated_at
+  last_paid_at, overdue_due_advance_pending, version, created_at, updated_at
 )
 SELECT nextval('subscriber_member_seq'), m.id, 20.00, v.billing_day, v.status, v.next_due,
-  v.last_paid, v.overdue_pending, NOW(), NOW()
+  v.last_paid, v.overdue_pending, 0, NOW(), NOW()
 FROM (VALUES
   ('member_subscriber_01@gmail.com', 10, 'ACTIVE',   (SELECT sub01_next_due FROM seed_dates), NULL,  false),
   ('member_subscriber_02@gmail.com', 15, 'DUE_SOON', (SELECT sub02_next_due FROM seed_dates), NULL,  false),
