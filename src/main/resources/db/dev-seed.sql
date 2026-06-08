@@ -18,6 +18,7 @@
 --
 -- Idempotente: reexecutar não duplica (guards por email / whatsapp / nota seed).
 -- Dados: 21 users, 10 sponsors, 100 benefits (10/sponsor), 10 members, billing, eventos.
+-- subscriber_member inclui overdue_due_advance_pending (F3 — ciclo OVERDUE em duas etapas).
 -- Senha de todos os usuários: mesmo plaintext usado para gerar o hash abaixo.
 -- =============================================================================
 
@@ -162,18 +163,37 @@ WHERE NOT EXISTS (SELECT 1 FROM members m WHERE m.whatsapp = v.whatsapp);
 -- -----------------------------------------------------------------------------
 -- 4) SUBSCRIBER_MEMBER (5)
 -- -----------------------------------------------------------------------------
-INSERT INTO subscriber_member (id, member_id, monthly_fee_amount, billing_day, status, next_due_date, last_paid_at, created_at, updated_at)
-SELECT nextval('subscriber_member_seq'), m.id, 20.00, v.billing_day, v.status, v.next_due, v.last_paid, NOW(), NOW()
+INSERT INTO subscriber_member (
+  id, member_id, monthly_fee_amount, billing_day, status, next_due_date,
+  last_paid_at, overdue_due_advance_pending, created_at, updated_at
+)
+SELECT nextval('subscriber_member_seq'), m.id, 20.00, v.billing_day, v.status, v.next_due,
+  v.last_paid, v.overdue_pending, NOW(), NOW()
 FROM (VALUES
-  ('member_subscriber_01@gmail.com', 10, 'ACTIVE',   (SELECT sub01_next_due FROM seed_dates), NULL),
-  ('member_subscriber_02@gmail.com', 15, 'DUE_SOON', (SELECT sub02_next_due FROM seed_dates), NULL),
-  ('member_subscriber_03@gmail.com',  5, 'OVERDUE',  (SELECT sub03_next_due FROM seed_dates), NULL),
-  ('member_subscriber_04@gmail.com', 20, 'ACTIVE',   (SELECT sub04_next_due FROM seed_dates), NOW() - interval '5 days'),
-  ('member_subscriber_05@gmail.com', 10, 'INACTIVE', (SELECT sub05_next_due FROM seed_dates), NULL)
-) AS v(email, billing_day, status, next_due, last_paid)
+  ('member_subscriber_01@gmail.com', 10, 'ACTIVE',   (SELECT sub01_next_due FROM seed_dates), NULL,  false),
+  ('member_subscriber_02@gmail.com', 15, 'DUE_SOON', (SELECT sub02_next_due FROM seed_dates), NULL,  false),
+  ('member_subscriber_03@gmail.com',  5, 'OVERDUE',  (SELECT sub03_next_due FROM seed_dates), NULL,  false),
+  ('member_subscriber_04@gmail.com', 20, 'ACTIVE',   (SELECT sub04_next_due FROM seed_dates), NOW() - interval '5 days', false),
+  ('member_subscriber_05@gmail.com', 10, 'INACTIVE', (SELECT sub05_next_due FROM seed_dates), NULL,  false)
+) AS v(email, billing_day, status, next_due, last_paid, overdue_pending)
 JOIN users u ON u.email = v.email
 JOIN members m ON m.user_id = u.id
 WHERE NOT EXISTS (SELECT 1 FROM subscriber_member sm WHERE sm.member_id = m.id);
+
+-- Reexecução: sincroniza flag F3 nos assinantes seed já existentes
+UPDATE subscriber_member sm
+SET overdue_due_advance_pending = v.overdue_pending, updated_at = NOW()
+FROM (VALUES
+  ('member_subscriber_01@gmail.com', false),
+  ('member_subscriber_02@gmail.com', false),
+  ('member_subscriber_03@gmail.com', false),
+  ('member_subscriber_04@gmail.com', false),
+  ('member_subscriber_05@gmail.com', false)
+) AS v(email, overdue_pending)
+JOIN users u ON u.email = v.email
+JOIN members m ON m.user_id = u.id
+WHERE sm.member_id = m.id
+  AND sm.overdue_due_advance_pending IS DISTINCT FROM v.overdue_pending;
 
 -- -----------------------------------------------------------------------------
 -- 5) SPONSORED_MEMBER (5) — concedente = sponsor_01 (ativo)

@@ -2,7 +2,7 @@
 -- Jet Backoffice — limpar dados do seed de desenvolvimento
 -- =============================================================================
 -- Remove apenas registros criados por dev-seed.sql (marcadores email/whatsapp/name).
--- Não altera schema. Outros usuários/dados fora do seed permanecem.
+-- Não altera schema (incl. overdue_due_advance_pending em subscriber_member). Outros dados permanecem.
 --
 -- Fluxo recomendado:
 --   psql "postgresql://backoffice:backoffice@localhost:5432/backoffice" \
