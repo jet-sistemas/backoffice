@@ -12,7 +12,7 @@ public final class MemberBillingRules {
   }
 
   /**
-   * Status automático esperado com base na data de vencimento e janela “a vencer”.
+   * Status automático esperado com base na data de vencimento e janela "a vencer".
    * Não considera {@link MemberStatusEnum#INACTIVE} — chamador deve ignorar esse caso.
    */
   public static MemberStatusEnum expectedAutomationStatus(LocalDate today, int dueSoonDays,
@@ -25,6 +25,18 @@ public final class MemberBillingRules {
       return MemberStatusEnum.DUE_SOON;
     }
     return MemberStatusEnum.ACTIVE;
+  }
+
+  /**
+   * Resolve o status efetivo em tempo real: preserva {@code INACTIVE} (controle manual)
+   * e deriva os demais a partir de {@code nextDueDate} — independente do cache persistido.
+   */
+  public static MemberStatusEnum resolveEffectiveStatus(
+      MemberStatusEnum persisted, LocalDate today, int dueSoonDays, LocalDate nextDueDate) {
+    if (persisted == MemberStatusEnum.INACTIVE) {
+      return MemberStatusEnum.INACTIVE;
+    }
+    return expectedAutomationStatus(today, dueSoonDays, nextDueDate);
   }
 
   public static boolean canMarkSubscriberPayment(MemberStatusEnum status, LocalDate today, int dueSoonDays,
@@ -63,13 +75,17 @@ public final class MemberBillingRules {
   }
 
   /**
-   * OVERDUE com competência já ultrapassada: segunda marcação após registro só com {@code lastPaidAt}
-   * deve avançar {@code nextDueDate}.
+   * OVERDUE com competência passada: decide se o pagamento deve avançar {@code nextDueDate}.
+   * Avança na 1ª marcação se competência igual ou futura; na 2ª se flag {@code pending} ativo.
    */
-  public static boolean overdueEligibleForDeferredDueAdvance(LocalDate nextDueDate, LocalDate lastPaidLocalDate) {
-    if (lastPaidLocalDate == null) {
-      return false;
+  public static boolean shouldAdvanceOverduePayment(
+      LocalDate today, LocalDate nextDueDate, boolean overdueDueAdvancePending) {
+    if (YearMonth.from(today).equals(YearMonth.from(nextDueDate))) {
+      return true;
     }
-    return YearMonth.from(lastPaidLocalDate).isAfter(YearMonth.from(nextDueDate));
+    if (!YearMonth.from(today).isAfter(YearMonth.from(nextDueDate))) {
+      return true;
+    }
+    return overdueDueAdvancePending;
   }
 }

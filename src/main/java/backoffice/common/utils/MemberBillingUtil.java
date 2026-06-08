@@ -37,4 +37,16 @@ public final class MemberBillingUtil {
     }
     return currentNextDue.plusMonths(1).withDayOfMonth(newBillingDay);
   }
+
+  /**
+   * Avança {@code nextDueDate} em pelo menos 1 mês, ancorado no {@code billingDay},
+   * com catch-up para garantir resultado {@code >= today}.
+   */
+  public static LocalDate advanceNextDueDate(LocalDate currentNextDue, int billingDay, LocalDate today) {
+    LocalDate nd = currentNextDue.plusMonths(1).withDayOfMonth(billingDay);
+    while (nd.isBefore(today)) {
+      nd = nd.plusMonths(1);
+    }
+    return nd;
+  }
 }

@@ -2,7 +2,9 @@ package backoffice.v1.resources;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
@@ -156,7 +158,7 @@ class AdminResourceSubscriberBillingTest {
         .patch(USER_PATH + "/" + userId + "/subscriber/paid")
         .then()
         .statusCode(200)
-        .body("data.subscriber.status", is("ACTIVE"));
+        .body("data.subscriber.status", not(is("OVERDUE")));
   }
 
   @Test
@@ -282,6 +284,138 @@ class AdminResourceSubscriberBillingTest {
         .then()
         .statusCode(200)
         .body("data.summary.activeCount", notNullValue());
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("F1: status stale ACTIVE com vencimento passado — markPaid resolve efetivo e avança")
+  void markPaid_staleActiveResolvedToOverdue() {
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("stale-active"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of(
+            "nextDueDate", "2020-01-10",
+            "status", "ACTIVE"))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(200);
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of())
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber/paid")
+        .then()
+        .statusCode(200)
+        .body("data.subscriber.status", is("OVERDUE"))
+        .body("data.subscriber.nextDueDate", is("2020-01-10"));
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of())
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber/paid")
+        .then()
+        .statusCode(200)
+        .body("data.subscriber.status", not(is("OVERDUE")));
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("F2: advance ancora no billingDay, não no dia de nextDueDate")
+  void markPaid_advanceAnchoredOnBillingDay() {
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("anchor-day"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    LocalDate today = LocalDate.now();
+    LocalDate due = today.withDayOfMonth(today.getDayOfMonth() <= 2 ? 1 : today.getDayOfMonth() - 1);
+    if (!due.isBefore(today)) {
+      due = due.minusMonths(1);
+    }
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of(
+            "nextDueDate", due.toString(),
+            "status", "OVERDUE",
+            "billingDay", 10))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(200);
+
+    String nextDue = given()
+        .contentType(ContentType.JSON)
+        .body(Map.of())
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber/paid")
+        .then()
+        .statusCode(200)
+        .extract()
+        .path("data.subscriber.nextDueDate");
+
+    assertEquals(10, LocalDate.parse(nextDue).getDayOfMonth(),
+        "Advance must anchor on billingDay=10");
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("F3: paidAt retroativo no mesmo mês de nextDueDate — pending ativado, 2ª avança")
+  void markPaid_retroactivePaidAt_twoSteps() {
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("retro-paid"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of(
+            "nextDueDate", "2020-01-10",
+            "status", "OVERDUE"))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(200);
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of("paidAt", "2020-01-05T12:00:00Z"))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber/paid")
+        .then()
+        .statusCode(200)
+        .body("data.subscriber.status", is("OVERDUE"))
+        .body("data.subscriber.nextDueDate", is("2020-01-10"));
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of())
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber/paid")
+        .then()
+        .statusCode(200)
+        .body("data.subscriber.status", not(is("OVERDUE")));
   }
 
   @Test

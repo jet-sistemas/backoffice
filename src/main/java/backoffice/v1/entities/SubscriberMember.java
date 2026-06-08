@@ -47,4 +47,8 @@ public class SubscriberMember extends BaseEntity {
   private LocalDate nextDueDate;
 
   private Instant lastPaidAt;
+
+  @Column(nullable = false)
+  @Builder.Default
+  private boolean overdueDueAdvancePending = false;
 }

@@ -10,6 +10,7 @@ import backoffice.v1.dtos.billing.SubscriberBillingRowDTO;
 import backoffice.v1.dtos.billing.SubscriberPaymentEventDTO;
 import backoffice.v1.entities.SubscriberMember;
 import backoffice.v1.entities.SubscriberPaymentEvent;
+import backoffice.v1.entities.enums.MemberStatusEnum;
 
 public final class SubscriberBillingMapper {
 
@@ -20,6 +21,8 @@ public final class SubscriberBillingMapper {
     var m = sm.getMember();
     var u = m.getUser();
     LocalDate today = LocalDate.now(ZoneId.systemDefault());
+    MemberStatusEnum effective = MemberBillingRules.resolveEffectiveStatus(
+        sm.getStatus(), today, dueSoonDays, sm.getNextDueDate());
     var row = SubscriberBillingRowDTO.builder()
         .userId(u.getId())
         .memberId(m.getId())
@@ -29,13 +32,13 @@ public final class SubscriberBillingMapper {
         .whatsapp(m.getWhatsapp())
         .monthlyFeeAmount(sm.getMonthlyFeeAmount())
         .billingDay(sm.getBillingDay())
-        .status(sm.getStatus())
+        .status(effective)
         .nextDueDate(sm.getNextDueDate())
         .lastPaidAt(sm.getLastPaidAt())
         .canMarkPayment(
-            MemberBillingRules.canMarkSubscriberPayment(sm.getStatus(), today, dueSoonDays, sm.getNextDueDate()))
+            MemberBillingRules.canMarkSubscriberPayment(effective, today, dueSoonDays, sm.getNextDueDate()))
         .paymentMarkBlockedReason(
-            MemberBillingRules.paymentMarkBlockedReason(sm.getStatus(), today, dueSoonDays, sm.getNextDueDate()))
+            MemberBillingRules.paymentMarkBlockedReason(effective, today, dueSoonDays, sm.getNextDueDate()))
         .build();
     return row;
   }

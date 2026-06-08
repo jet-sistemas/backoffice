@@ -33,6 +33,42 @@ class MemberBillingRulesTest {
         MemberBillingRules.expectedAutomationStatus(today, 5, LocalDate.of(2026, 6, 21)));
   }
 
+  // --- resolveEffectiveStatus (F1) ---
+
+  @Test
+  void effectiveStatus_inactivePreservedEvenWithOverdueDueDate() {
+    LocalDate today = LocalDate.of(2026, 6, 15);
+    assertEquals(MemberStatusEnum.INACTIVE,
+        MemberBillingRules.resolveEffectiveStatus(
+            MemberStatusEnum.INACTIVE, today, 5, LocalDate.of(2026, 1, 1)));
+  }
+
+  @Test
+  void effectiveStatus_staleActiveBecomesOverdue() {
+    LocalDate today = LocalDate.of(2026, 6, 15);
+    assertEquals(MemberStatusEnum.OVERDUE,
+        MemberBillingRules.resolveEffectiveStatus(
+            MemberStatusEnum.ACTIVE, today, 5, LocalDate.of(2026, 5, 10)));
+  }
+
+  @Test
+  void effectiveStatus_staleActiveBecomesDueSoon() {
+    LocalDate today = LocalDate.of(2026, 6, 15);
+    assertEquals(MemberStatusEnum.DUE_SOON,
+        MemberBillingRules.resolveEffectiveStatus(
+            MemberStatusEnum.ACTIVE, today, 5, LocalDate.of(2026, 6, 18)));
+  }
+
+  @Test
+  void effectiveStatus_activeRemainsActive() {
+    LocalDate today = LocalDate.of(2026, 6, 15);
+    assertEquals(MemberStatusEnum.ACTIVE,
+        MemberBillingRules.resolveEffectiveStatus(
+            MemberStatusEnum.ACTIVE, today, 5, LocalDate.of(2026, 6, 25)));
+  }
+
+  // --- canMarkSubscriberPayment ---
+
   @Test
   void cannotMarkWhenOutsideCompetenceMonth() {
     LocalDate today = LocalDate.of(2026, 6, 15);
@@ -63,16 +99,33 @@ class MemberBillingRulesTest {
         MemberBillingRules.canMarkSubscriberPayment(MemberStatusEnum.OVERDUE, today, 5, LocalDate.of(2020, 1, 10)));
   }
 
+  // --- shouldAdvanceOverduePayment (F3) ---
+
   @Test
-  void deferredAdvanceAfterPaymentRecordedPastCompetence() {
-    LocalDate nextDue = LocalDate.of(2026, 3, 10);
-    LocalDate lastPaid = LocalDate.of(2026, 5, 15);
-    assertEquals(true, MemberBillingRules.overdueEligibleForDeferredDueAdvance(nextDue, lastPaid));
+  void shouldAdvance_sameCompetenceMonth() {
+    LocalDate today = LocalDate.of(2026, 6, 15);
+    LocalDate nextDue = LocalDate.of(2026, 6, 5);
+    assertEquals(true, MemberBillingRules.shouldAdvanceOverduePayment(today, nextDue, false));
   }
 
   @Test
-  void noDeferredAdvanceWhenNeverPaid() {
-    assertEquals(false,
-        MemberBillingRules.overdueEligibleForDeferredDueAdvance(LocalDate.of(2026, 3, 10), null));
+  void shouldAdvance_pendingTrue_pastCompetence() {
+    LocalDate today = LocalDate.of(2026, 6, 15);
+    LocalDate nextDue = LocalDate.of(2026, 3, 10);
+    assertEquals(true, MemberBillingRules.shouldAdvanceOverduePayment(today, nextDue, true));
+  }
+
+  @Test
+  void shouldNotAdvance_pendingFalse_pastCompetence() {
+    LocalDate today = LocalDate.of(2026, 6, 15);
+    LocalDate nextDue = LocalDate.of(2026, 3, 10);
+    assertEquals(false, MemberBillingRules.shouldAdvanceOverduePayment(today, nextDue, false));
+  }
+
+  @Test
+  void shouldAdvance_nextDueDateInFuture() {
+    LocalDate today = LocalDate.of(2026, 6, 15);
+    LocalDate nextDue = LocalDate.of(2026, 7, 10);
+    assertEquals(true, MemberBillingRules.shouldAdvanceOverduePayment(today, nextDue, false));
   }
 }
