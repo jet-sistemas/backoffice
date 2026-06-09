@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
 import backoffice.v1.entities.enums.MemberStatusEnum;
+import backoffice.v1.entities.enums.PaymentMarkBlockReasonEnum;
 
 class MemberBillingRulesTest {
 
@@ -80,6 +81,16 @@ class MemberBillingRulesTest {
   void cannotMark_activeAndInactive() {
     assertEquals(false, MemberBillingRules.canMarkSubscriberPayment(MemberStatusEnum.ACTIVE));
     assertEquals(false, MemberBillingRules.canMarkSubscriberPayment(MemberStatusEnum.INACTIVE));
+  }
+
+  @Test
+  void paymentMarkBlockedCode_mapsEffectiveStatus() {
+    assertEquals(PaymentMarkBlockReasonEnum.ALREADY_REGISTERED,
+        MemberBillingRules.paymentMarkBlockedCode(MemberStatusEnum.ACTIVE));
+    assertEquals(PaymentMarkBlockReasonEnum.INACTIVE,
+        MemberBillingRules.paymentMarkBlockedCode(MemberStatusEnum.INACTIVE));
+    assertEquals(null, MemberBillingRules.paymentMarkBlockedCode(MemberStatusEnum.OVERDUE));
+    assertEquals(null, MemberBillingRules.paymentMarkBlockedCode(MemberStatusEnum.DUE_SOON));
   }
 
   @Test

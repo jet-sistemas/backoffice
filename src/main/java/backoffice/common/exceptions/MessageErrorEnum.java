@@ -40,6 +40,8 @@ public enum MessageErrorEnum {
   SUBSCRIBER_PAYMENT_INACTIVE("Não é possível registrar pagamento: mensalidade inativa."),
   SUBSCRIBER_PAYMENT_CONCURRENT_UPDATE(
       "Este pagamento já está sendo processado ou o registro foi atualizado. Recarregue e tente novamente."),
+  PAYMENT_AMOUNT_INVALID("O valor pago deve ser maior que zero."),
+  MEMBER_FULLNAME_REQUIRED("O nome completo do associado é obrigatório."),
   MEMBER_TYPE_FILTER_REQUIRES_USER_TYPE_MEMBER(
       "O filtro de tipo de membro (memberType) só pode ser usado quando type=MEMBER."),
 

@@ -17,7 +17,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assumptions;
 
+import backoffice.v1.entities.SubscriberMember;
+import backoffice.v1.entities.enums.MemberStatusEnum;
+import backoffice.v1.repositories.SubscriberMemberRepository;
 import backoffice.v1.services.MemberBillingService;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.inject.Inject;
 
 @QuarkusTest
@@ -27,6 +31,9 @@ class AdminResourceSubscriberBillingTest {
 
   @Inject
   MemberBillingService memberBillingService;
+
+  @Inject
+  SubscriberMemberRepository subscriberMemberRepository;
 
   private static String uniqueDocument() {
     long t = System.currentTimeMillis() % 100_000_000_000L;
@@ -448,5 +455,157 @@ class AdminResourceSubscriberBillingTest {
         .then()
         .statusCode(200)
         .body("data.member.subscriber.status", is("OVERDUE"));
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("F10: PATCH com status ACTIVE e vencimento passado normaliza para OVERDUE")
+  void patchSubscriber_normalizesContradictoryStatus() {
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("patch-norm"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of(
+            "nextDueDate", "2020-01-10",
+            "status", "ACTIVE"))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(200)
+        .body("data.subscriber.status", is("OVERDUE"));
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("F10: PATCH com status INACTIVE preserva override manual")
+  void patchSubscriber_preservesInactiveOverride() {
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("patch-inactive"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of(
+            "nextDueDate", "2020-01-10",
+            "status", "INACTIVE"))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(200)
+        .body("data.subscriber.status", is("INACTIVE"));
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("F11: PATCH rejeita billingDay fora de 1-28 com 400")
+  void patchSubscriber_rejectsInvalidBillingDay() {
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("patch-day"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of("billingDay", 29))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(400);
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("F11: PATCH rejeita monthlyFeeAmount <= 0 com 400")
+  void patchSubscriber_rejectsInvalidMonthlyFee() {
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("patch-fee"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of("monthlyFeeAmount", 0))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(400);
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("F13: refreshBillingStatuses processa múltiplos assinantes em lotes")
+  void refreshStatuses_processesMultipleSubscribersInBatches() {
+    int userId1 = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("batch-1"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    int userId2 = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("batch-2"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    seedStaleOverdueState(userId1, LocalDate.of(2020, 1, 10));
+    seedStaleOverdueState(userId2, LocalDate.of(2020, 2, 10));
+
+    int changed = memberBillingService.refreshBillingStatuses();
+    Assumptions.assumeTrue(changed >= 2, "Job should transition at least 2 overdue subscribers");
+
+    given()
+        .when()
+        .get(USER_PATH + "/" + userId1)
+        .then()
+        .statusCode(200)
+        .body("data.member.subscriber.status", is("OVERDUE"));
+
+    given()
+        .when()
+        .get(USER_PATH + "/" + userId2)
+        .then()
+        .statusCode(200)
+        .body("data.member.subscriber.status", is("OVERDUE"));
+  }
+
+  private void seedStaleOverdueState(int userId, LocalDate nextDueDate) {
+    QuarkusTransaction.requiringNew().run(() -> {
+      SubscriberMember sub = subscriberMemberRepository.findByMemberUserId((long) userId)
+          .orElseThrow();
+      sub.setNextDueDate(nextDueDate);
+      sub.setStatus(MemberStatusEnum.ACTIVE);
+    });
   }
 }

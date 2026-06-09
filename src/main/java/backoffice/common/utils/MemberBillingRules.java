@@ -5,6 +5,7 @@ import java.time.YearMonth;
 
 import backoffice.common.exceptions.MessageErrorEnum;
 import backoffice.v1.entities.enums.MemberStatusEnum;
+import backoffice.v1.entities.enums.PaymentMarkBlockReasonEnum;
 
 public final class MemberBillingRules {
 
@@ -51,6 +52,17 @@ public final class MemberBillingRules {
     }
     if (effectiveStatus == MemberStatusEnum.ACTIVE) {
       return MessageErrorEnum.SUBSCRIBER_PAYMENT_ALREADY_REGISTERED.getMessage();
+    }
+    return null;
+  }
+
+  /** Código estável para UI quando {@link #canMarkSubscriberPayment} é falso; {@code null} se pode marcar. */
+  public static PaymentMarkBlockReasonEnum paymentMarkBlockedCode(MemberStatusEnum effectiveStatus) {
+    if (effectiveStatus == MemberStatusEnum.INACTIVE) {
+      return PaymentMarkBlockReasonEnum.INACTIVE;
+    }
+    if (effectiveStatus == MemberStatusEnum.ACTIVE) {
+      return PaymentMarkBlockReasonEnum.ALREADY_REGISTERED;
     }
     return null;
   }

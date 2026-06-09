@@ -225,18 +225,12 @@ public class MemberService {
     int previousBillingDay = sub.getBillingDay();
 
     if (dto.getMonthlyFeeAmount() != null) {
-      if (dto.getMonthlyFeeAmount().compareTo(BigDecimal.ZERO) <= 0) {
-        throw new BadRequestException("O valor da mensalidade deve ser maior que zero.");
-      }
       sub.setMonthlyFeeAmount(dto.getMonthlyFeeAmount());
     }
 
     boolean appliedBillingDayRecalc = false;
     if (dto.getBillingDay() != null) {
       int d = dto.getBillingDay();
-      if (d < 1 || d > 28) {
-        throw new BadRequestException("O dia de cobrança deve estar entre 1 e 28.");
-      }
       boolean billingDayChanging = d != previousBillingDay;
       sub.setBillingDay(d);
       if (billingDayChanging && (statusBeforePatch == MemberStatusEnum.ACTIVE
@@ -252,6 +246,8 @@ public class MemberService {
     if (!appliedBillingDayRecalc && dto.getStatus() != null && !dto.getStatus().isBlank()) {
       sub.setStatus(MemberStatusEnum.valueOf(dto.getStatus().trim().toUpperCase()));
     }
+
+    memberBillingService.normalizeSubscriberStatusAfterManualPatch(sub);
 
     subscriberMemberRepository.persistAndFlush(sub);
     memberBillingService.recordConfigChangeAfterPatch(sub, before, adminActorId);
@@ -309,7 +305,7 @@ public class MemberService {
     if (dto.getFullname() != null) {
       String trimmed = dto.getFullname().trim();
       if (trimmed.isEmpty()) {
-        throw new BadRequestException("O nome completo do associado é obrigatório.");
+        throw new BadRequestException(MessageErrorEnum.MEMBER_FULLNAME_REQUIRED.getMessage());
       }
       member.setFullname(trimmed);
     }

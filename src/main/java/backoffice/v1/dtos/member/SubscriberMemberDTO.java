@@ -24,4 +24,5 @@ public class SubscriberMemberDTO {
   private Instant createdAt;
   private Boolean canMarkPayment;
   private String paymentMarkBlockedReason;
+  private String paymentMarkBlockedCode;
 }

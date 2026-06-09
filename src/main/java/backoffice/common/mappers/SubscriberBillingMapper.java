@@ -10,6 +10,7 @@ import backoffice.v1.dtos.billing.SubscriberPaymentEventDTO;
 import backoffice.v1.entities.SubscriberMember;
 import backoffice.v1.entities.SubscriberPaymentEvent;
 import backoffice.v1.entities.enums.MemberStatusEnum;
+import backoffice.v1.entities.enums.PaymentMarkBlockReasonEnum;
 
 public final class SubscriberBillingMapper {
 
@@ -36,6 +37,7 @@ public final class SubscriberBillingMapper {
         .lastPaidAt(sm.getLastPaidAt())
         .canMarkPayment(MemberBillingRules.canMarkSubscriberPayment(effective))
         .paymentMarkBlockedReason(MemberBillingRules.paymentMarkBlockedReason(effective))
+        .paymentMarkBlockedCode(codeOrNull(MemberBillingRules.paymentMarkBlockedCode(effective)))
         .build();
     return row;
   }
@@ -71,6 +73,10 @@ public final class SubscriberBillingMapper {
         .createdAt(e.getCreatedAt())
         .adminUser(e.getAdminUser() == null ? null : UserMapper.fromEntityToMinimal(e.getAdminUser()))
         .build();
+  }
+
+  private static String codeOrNull(PaymentMarkBlockReasonEnum code) {
+    return code == null ? null : code.name();
   }
 
   public static Pageable<SubscriberPaymentEventDTO> fromPaymentEventPageable(Pageable<SubscriberPaymentEvent> in) {

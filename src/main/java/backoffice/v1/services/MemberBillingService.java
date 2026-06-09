@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
@@ -61,20 +62,25 @@ public class MemberBillingService {
   @ConfigProperty(name = "backoffice.billing.zone-id", defaultValue = "America/Sao_Paulo")
   String billingZoneId;
 
+  @ConfigProperty(name = "backoffice.billing.status-batch-size", defaultValue = "500")
+  int statusBatchSize;
+
+  @Inject
+  BillingStatusBatchProcessor billingStatusBatchProcessor;
+
   private ZoneId billingZone() {
     return ZoneId.of(billingZoneId);
   }
 
-  @Transactional
   public int refreshBillingStatuses() {
     long startedAt = System.nanoTime();
     LOG.infof("billing.status.job started");
     LocalDate today = LocalDate.now(billingZone());
     LocalDate windowEnd = today.plusDays(dueSoonDays);
     int changed = 0;
-    changed += applyAutomationPass(today, windowEnd, MemberStatusEnum.OVERDUE);
-    changed += applyAutomationPass(today, windowEnd, MemberStatusEnum.DUE_SOON);
-    changed += applyAutomationPass(today, windowEnd, MemberStatusEnum.ACTIVE);
+    changed += runAutomationPassInBatches(today, windowEnd, MemberStatusEnum.OVERDUE);
+    changed += runAutomationPassInBatches(today, windowEnd, MemberStatusEnum.DUE_SOON);
+    changed += runAutomationPassInBatches(today, windowEnd, MemberStatusEnum.ACTIVE);
     LOG.infof("billing.status.job finished; transitions=%d", changed);
     LOG.infof("billing.status.job total execution time: %d ms", (System.nanoTime() - startedAt) / 1_000_000);
     return changed;
@@ -98,25 +104,35 @@ public class MemberBillingService {
     dto.setStatus(effective);
     dto.setCanMarkPayment(MemberBillingRules.canMarkSubscriberPayment(effective));
     dto.setPaymentMarkBlockedReason(MemberBillingRules.paymentMarkBlockedReason(effective));
+    var code = MemberBillingRules.paymentMarkBlockedCode(effective);
+    dto.setPaymentMarkBlockedCode(code == null ? null : code.name());
   }
 
-  private int applyAutomationPass(LocalDate today, LocalDate windowEnd, MemberStatusEnum phase) {
-    int changed = 0;
-    for (SubscriberMember s : subscriberMemberRepository.listNeedingAutomationStatus(today, windowEnd, phase)) {
-      if (s.getStatus() == MemberStatusEnum.INACTIVE) {
-        continue;
-      }
-      MemberStatusEnum target = MemberBillingRules.expectedAutomationStatus(today, dueSoonDays, s.getNextDueDate());
-      if (target != phase || s.getStatus() == target) {
-        continue;
-      }
-      SubscriberMemberConfigSnapshot before = SubscriberMemberConfigSnapshot.from(s);
-      s.setStatus(target);
-      subscriberMemberRepository.persist(s);
-      SubscriberMemberConfigSnapshot after = SubscriberMemberConfigSnapshot.from(s);
-      persistSubscriberEvent(s, before, after, SubscriberPaymentEventTypeEnum.STATUS_AUTO_UPDATED, null, null, null);
-      changed++;
+  /**
+   * Garante que status persistido não contradiz {@code nextDueDate} após patch manual.
+   * {@link MemberStatusEnum#INACTIVE} permanece sob controle manual.
+   */
+  public void normalizeSubscriberStatusAfterManualPatch(SubscriberMember sub) {
+    if (sub.getStatus() == MemberStatusEnum.INACTIVE) {
+      return;
     }
+    LocalDate today = LocalDate.now(billingZone());
+    sub.setStatus(MemberBillingRules.expectedAutomationStatus(today, dueSoonDays, sub.getNextDueDate()));
+  }
+
+  private int runAutomationPassInBatches(LocalDate today, LocalDate windowEnd, MemberStatusEnum phase) {
+    int changed = 0;
+    long afterId = 0L;
+    List<SubscriberMember> batch;
+    do {
+      batch = subscriberMemberRepository.listNeedingAutomationStatusBatch(
+          today, windowEnd, phase, afterId, statusBatchSize);
+      if (batch.isEmpty()) {
+        break;
+      }
+      changed += billingStatusBatchProcessor.processBatch(batch, today, phase, dueSoonDays);
+      afterId = batch.get(batch.size() - 1).getId();
+    } while (batch.size() == statusBatchSize);
     return changed;
   }
 
@@ -134,7 +150,7 @@ public class MemberBillingService {
     Instant paidAt = dto.getPaidAt() != null ? dto.getPaidAt() : Instant.now();
     BigDecimal amount = dto.getAmountPaid() != null ? dto.getAmountPaid() : sub.getMonthlyFeeAmount();
     if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-      throw new BadRequestException("O valor pago deve ser maior que zero.");
+      throw new BadRequestException(MessageErrorEnum.PAYMENT_AMOUNT_INVALID.getMessage());
     }
 
     LocalDate today = LocalDate.now(billingZone());

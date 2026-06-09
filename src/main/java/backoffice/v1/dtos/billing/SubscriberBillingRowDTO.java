@@ -28,4 +28,5 @@ public class SubscriberBillingRowDTO {
   private Instant lastPaidAt;
   private Boolean canMarkPayment;
   private String paymentMarkBlockedReason;
+  private String paymentMarkBlockedCode;
 }

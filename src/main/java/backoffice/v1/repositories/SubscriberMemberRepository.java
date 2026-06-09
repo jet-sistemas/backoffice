@@ -44,16 +44,28 @@ public class SubscriberMemberRepository implements PanacheRepositoryBase<Subscri
 
   public List<SubscriberMember> listNeedingAutomationStatus(LocalDate today, LocalDate dueSoonWindowEnd,
       MemberStatusEnum expectedStatus) {
+    return listNeedingAutomationStatusBatch(today, dueSoonWindowEnd, expectedStatus, 0L, Integer.MAX_VALUE);
+  }
+
+  public List<SubscriberMember> listNeedingAutomationStatusBatch(
+      LocalDate today,
+      LocalDate dueSoonWindowEnd,
+      MemberStatusEnum expectedStatus,
+      long afterId,
+      int limit) {
     return switch (expectedStatus) {
       case OVERDUE -> find(
-          "nextDueDate < ?1 and status <> ?2 and status <> ?3",
-          today, MemberStatusEnum.OVERDUE, MemberStatusEnum.INACTIVE).list();
+          "nextDueDate < ?1 and status <> ?2 and status <> ?3 and id > ?4 order by id asc",
+          today, MemberStatusEnum.OVERDUE, MemberStatusEnum.INACTIVE, afterId)
+          .page(0, limit).list();
       case DUE_SOON -> find(
-          "nextDueDate >= ?1 and nextDueDate <= ?2 and status <> ?3 and status <> ?4",
-          today, dueSoonWindowEnd, MemberStatusEnum.DUE_SOON, MemberStatusEnum.INACTIVE).list();
+          "nextDueDate >= ?1 and nextDueDate <= ?2 and status <> ?3 and status <> ?4 and id > ?5 order by id asc",
+          today, dueSoonWindowEnd, MemberStatusEnum.DUE_SOON, MemberStatusEnum.INACTIVE, afterId)
+          .page(0, limit).list();
       case ACTIVE -> find(
-          "nextDueDate > ?1 and status <> ?2 and status <> ?3",
-          dueSoonWindowEnd, MemberStatusEnum.ACTIVE, MemberStatusEnum.INACTIVE).list();
+          "nextDueDate > ?1 and status <> ?2 and status <> ?3 and id > ?4 order by id asc",
+          dueSoonWindowEnd, MemberStatusEnum.ACTIVE, MemberStatusEnum.INACTIVE, afterId)
+          .page(0, limit).list();
       default -> List.of();
     };
   }
