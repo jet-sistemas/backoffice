@@ -1,17 +1,28 @@
 package backoffice.v1.resources;
 
+import java.util.Optional;
+
+import org.eclipse.microprofile.jwt.JsonWebToken;
+
 import backoffice.common.database.Pageable;
 import backoffice.common.requests.ResponseModel;
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
+import backoffice.v1.dtos.billing.ListSubscriberBillingQueryDTO;
+import backoffice.v1.dtos.billing.ListSubscriberPaymentEventsQueryDTO;
+import backoffice.v1.dtos.billing.SubscriberPaymentEventDTO;
+import backoffice.v1.dtos.billing.SubscriberPaymentMarkPaidDTO;
 import backoffice.v1.dtos.common.PageDTO;
+import backoffice.v1.dtos.member.MemberDTO;
+import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
 import backoffice.v1.dtos.user.ListUsersQueryDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorDTO;
 import backoffice.v1.dtos.user.UserWithSponsorUpdateDTO;
 import backoffice.v1.openapi.api.AdminApi;
 import backoffice.v1.services.AdminService;
+import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.BeanParam;
@@ -21,6 +32,30 @@ import jakarta.ws.rs.core.Response.Status;
 public class AdminResource implements AdminApi {
   @Inject
   private AdminService service;
+
+  @Inject
+  SecurityIdentity identity;
+
+  private Optional<Long> currentActorId() {
+    if (identity == null || identity.isAnonymous()) {
+      return Optional.empty();
+    }
+    if (identity.getPrincipal() instanceof JsonWebToken jwt) {
+      Object id = jwt.getClaim("id");
+      if (id == null) {
+        return Optional.empty();
+      }
+      if (id instanceof Number n) {
+        return Optional.of(n.longValue());
+      }
+      try {
+        return Optional.of(Long.parseLong(id.toString()));
+      } catch (NumberFormatException e) {
+        return Optional.empty();
+      }
+    }
+    return Optional.empty();
+  }
 
   @Override
   public Response createUser(UserWithSponsorCreateDTO dto) {
@@ -71,9 +106,39 @@ public class AdminResource implements AdminApi {
         query.resolveTier(),
         query.resolveEntityType(),
         query.resolvePersona(),
+        query.resolveMemberType(),
         query.getIsActive(),
         query.resolveSearch(),
         PageDTO.of(query.getPage(), query.getSize()));
+    var response = ResponseModel.success(Status.OK.getStatusCode(), result);
+    return Response.ok(response).build();
+  }
+
+  @Override
+  public Response patchSubscriberMemberByUserId(Long id, SubscriberMemberUpdateDTO dto) {
+    MemberDTO result = service.patchSubscriberMemberByUserId(id, dto, currentActorId().orElse(null));
+    var response = ResponseModel.success(Status.OK.getStatusCode(), result);
+    return Response.ok(response).build();
+  }
+
+  @Override
+  public Response markSubscriberPaidByUserId(Long id, SubscriberPaymentMarkPaidDTO dto) {
+    MemberDTO result = service.markSubscriberPaidByUserId(id, dto, currentActorId().orElse(null));
+    var response = ResponseModel.success(Status.OK.getStatusCode(), result);
+    return Response.ok(response).build();
+  }
+
+  @Override
+  public Response listSubscriberPaymentEvents(Long id, @Valid @BeanParam ListSubscriberPaymentEventsQueryDTO query) {
+    Pageable<SubscriberPaymentEventDTO> result =
+        service.listSubscriberPaymentEvents(id, query.resolvePage());
+    var response = ResponseModel.success(Status.OK.getStatusCode(), result);
+    return Response.ok(response).build();
+  }
+
+  @Override
+  public Response listSubscriberBilling(ListSubscriberBillingQueryDTO query) {
+    var result = service.listSubscriberBilling(query);
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
     return Response.ok(response).build();
   }

@@ -25,6 +25,25 @@ public enum MessageErrorEnum {
       "Persona é obrigatória quando o tipo de entidade é PERSON. Valores aceitos: POLITICIAN, INFLUENCER, ATHLETE, OTHER"),
   SPONSOR_DATA_REQUIRED("Dados do patrocinador são obrigatórios para usuários do tipo SPONSOR."),
   USER_TYPE_NOT_IMPLEMENTED("Tipo de usuário ainda não implementado."),
+  MEMBER_DATA_REQUIRED("Dados do membro são obrigatórios para usuários do tipo MEMBER."),
+  MEMBER_SUBSCRIBER_DATA_REQUIRED("Dados de mensalidade são obrigatórios para membros assinantes (SUBSCRIBER)."),
+  MEMBER_SPONSORED_DATA_REQUIRED("Dados de patrocínio são obrigatórios para membros patrocinados (SPONSORED)."),
+  MEMBER_SUBSCRIBER_EXTRA_INVALID(
+      "Membros assinantes não devem enviar bloco de patrocínio (sponsored); use apenas subscriber."),
+  MEMBER_SPONSORED_EXTRA_INVALID(
+      "Membros patrocinados não devem enviar bloco de mensalidade (subscriber); use apenas sponsored."),
+  MEMBER_SPONSORED_GRANT_INVALID(
+      "O usuário concedente deve existir, ser patrocinador (SPONSOR ou SPONSOR_MEMBER) e possuir registro de patrocinador ativo."),
+  MEMBER_SUBSCRIBER_NOT_FOUND("Este membro não possui cadastro de assinante."),
+  MEMBER_SUBSCRIBER_UPDATE_INVALID("Não é possível atualizar mensalidade: membro não é assinante."),
+  SUBSCRIBER_PAYMENT_ALREADY_REGISTERED("Pagamento deste ciclo já registrado."),
+  SUBSCRIBER_PAYMENT_INACTIVE("Não é possível registrar pagamento: mensalidade inativa."),
+  SUBSCRIBER_PAYMENT_CONCURRENT_UPDATE(
+      "Este pagamento já está sendo processado ou o registro foi atualizado. Recarregue e tente novamente."),
+  PAYMENT_AMOUNT_INVALID("O valor pago deve ser maior que zero."),
+  MEMBER_FULLNAME_REQUIRED("O nome completo do associado é obrigatório."),
+  MEMBER_TYPE_FILTER_REQUIRES_USER_TYPE_MEMBER(
+      "O filtro de tipo de membro (memberType) só pode ser usado quando type=MEMBER."),
 
   BENEFIT_NOT_FOUND("Benefício não encontrado."),
 

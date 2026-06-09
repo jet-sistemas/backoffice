@@ -14,6 +14,7 @@ import io.restassured.http.ContentType;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -72,6 +73,25 @@ class AdminResourceUserTest {
         "code", code,
         "type", "ADM"
     ));
+    return payload;
+  }
+
+  private static Map<String, Object> memberUserPayload(String email, String code) {
+    var payload = new HashMap<String, Object>();
+    payload.put("user", Map.of(
+        "email", email,
+        "name", "Membro Teste",
+        "document", uniqueDocument(),
+        "code", code,
+        "type", "MEMBER"));
+    var member = new HashMap<String, Object>();
+    member.put("fullname", "Membro Teste Completo");
+    member.put("whatsapp", "119" + String.format("%09d", Math.abs(System.nanoTime() % 1_000_000_000L)));
+    member.put("type", "SUBSCRIBER");
+    member.put("subscriber", Map.of(
+        "monthlyFeeAmount", 50.00,
+        "billingDay", 10));
+    payload.put("member", member);
     return payload;
   }
 
@@ -454,24 +474,21 @@ class AdminResourceUserTest {
 
     @Test
     @TestSecurity(user = "admin", roles = "ADM")
-    @DisplayName("retorna 400 quando type=MEMBER (não implementado)")
-    void createMemberUser_returns400() {
-      var payload = new HashMap<String, Object>();
-      payload.put("user", Map.of(
-          "email", uniqueEmail("member-create"),
-          "name", "Membro Teste",
-          "document", uniqueDocument(),
-          "code", uniqueCode(),
-          "type", "MEMBER"
-      ));
-
+    @DisplayName("retorna 201 quando type=MEMBER com dados de membro válidos")
+    void createMemberUser_returns201() {
+      String email = uniqueEmail("member-create");
+      String code = uniqueCode();
       given()
           .contentType(ContentType.JSON)
-          .body(payload)
+          .body(memberUserPayload(email, code))
           .when()
           .post(BASE_PATH)
           .then()
-          .statusCode(400);
+          .statusCode(201)
+          .body("status", is("OK"))
+          .body("data.email", is(email))
+          .body("data.type", is("MEMBER"))
+          .body("data.member", notNullValue());
     }
   }
 
@@ -570,6 +587,40 @@ class AdminResourceUserTest {
           .put(BASE_PATH + "/999999")
           .then()
           .statusCode(404);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("retorna 200 ao atualizar apenas dados do membro (PUT parcial)")
+    void updateMemberUserOnlyMemberData_returns200() {
+      String email = uniqueEmail("update-member-profile");
+      String code = uniqueCode();
+
+      Long userId = given()
+          .contentType(ContentType.JSON)
+          .body(memberUserPayload(email, code))
+          .when()
+          .post(BASE_PATH)
+          .then()
+          .statusCode(201)
+          .extract()
+          .jsonPath()
+          .getLong("data.id");
+
+      String newWhatsapp = "11" + String.format("%09d", ThreadLocalRandom.current().nextInt(0, 1_000_000_000));
+
+      given()
+          .contentType(ContentType.JSON)
+          .body(Map.of("member", Map.of(
+              "fullname", "Nome Completo Atualizado",
+              "whatsapp", newWhatsapp)))
+          .when()
+          .put(BASE_PATH + "/" + userId)
+          .then()
+          .statusCode(200)
+          .body("status", is("OK"))
+          .body("data.member.fullname", is("Nome Completo Atualizado"))
+          .body("data.member.whatsapp", is(newWhatsapp));
     }
   }
 
