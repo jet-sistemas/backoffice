@@ -5,12 +5,16 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import io.restassured.http.ContentType;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -38,6 +42,11 @@ class AdminResourceUserTest {
   }
 
   private static Map<String, Object> sponsorUserPayload(String email, String code, String document) {
+    return sponsorUserPayload(email, code, document, "Patrocinador Public Name");
+  }
+
+  private static Map<String, Object> sponsorUserPayload(String email, String code, String document,
+      String publicName) {
     var payload = new HashMap<String, Object>();
     payload.put("user", Map.of(
         "email", email,
@@ -47,7 +56,7 @@ class AdminResourceUserTest {
         "type", "SPONSOR"
     ));
     payload.put("sponsor", Map.of(
-        "publicName", "Patrocinador Public Name",
+        "publicName", publicName,
         "tier", "GOLD",
         "entityType", "COMPANY",
         "persona", "OTHER"
@@ -64,6 +73,25 @@ class AdminResourceUserTest {
         "code", code,
         "type", "ADM"
     ));
+    return payload;
+  }
+
+  private static Map<String, Object> memberUserPayload(String email, String code) {
+    var payload = new HashMap<String, Object>();
+    payload.put("user", Map.of(
+        "email", email,
+        "name", "Membro Teste",
+        "document", uniqueDocument(),
+        "code", code,
+        "type", "MEMBER"));
+    var member = new HashMap<String, Object>();
+    member.put("fullname", "Membro Teste Completo");
+    member.put("whatsapp", "119" + String.format("%09d", Math.abs(System.nanoTime() % 1_000_000_000L)));
+    member.put("type", "SUBSCRIBER");
+    member.put("subscriber", Map.of(
+        "monthlyFeeAmount", 50.00,
+        "billingDay", 10));
+    payload.put("member", member);
     return payload;
   }
 
@@ -142,6 +170,94 @@ class AdminResourceUserTest {
           .body("currentPage", is(1))
           .body("pageSize", greaterThanOrEqualTo(0))
           .body("data.size()", greaterThanOrEqualTo(0));
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("retorna 400 quando search excede o tamanho máximo")
+    void listWithSearchTooLong_returns400() {
+      String tooLong = "x".repeat(101);
+      given()
+          .queryParam("search", tooLong)
+          .when()
+          .get(BASE_PATH)
+          .then()
+          .statusCode(400);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("aceita parâmetro search com type=SPONSOR e retorna 200")
+    void listWithSearchParam_returns200() {
+      given()
+          .queryParam("type", "SPONSOR")
+          .queryParam("search", "nom")
+          .when()
+          .get(BASE_PATH)
+          .then()
+          .statusCode(200)
+          .body("status", is("OK"))
+          .body("data", notNullValue());
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("search encontra patrocinador criado por nome público, documento e código")
+    void listSearch_findsCreatedSponsorByPublicNameDocumentAndCode() {
+      String marker = "SrchMrk" + (System.currentTimeMillis() % 1_000_000);
+      String publicName = "Empresa " + marker;
+      String document = uniqueDocument();
+      String code = "K" + String.format("%04d", (int) (System.currentTimeMillis() % 10000));
+      String email = uniqueEmail("search-sponsor");
+
+      int userId = given()
+          .contentType(ContentType.JSON)
+          .body(sponsorUserPayload(email, code, document, publicName))
+          .when()
+          .post(BASE_PATH)
+          .then()
+          .statusCode(201)
+          .extract()
+          .path("data.id");
+
+      given()
+          .queryParam("type", "SPONSOR")
+          .queryParam("search", marker)
+          .when()
+          .get(BASE_PATH)
+          .then()
+          .statusCode(200)
+          .body("data.id", hasItem(userId));
+
+      String docTail = document.substring(Math.max(0, document.length() - 6));
+      given()
+          .queryParam("type", "SPONSOR")
+          .queryParam("search", docTail)
+          .when()
+          .get(BASE_PATH)
+          .then()
+          .statusCode(200)
+          .body("data.id", hasItem(userId));
+
+      given()
+          .queryParam("type", "SPONSOR")
+          .queryParam("search", code)
+          .when()
+          .get(BASE_PATH)
+          .then()
+          .statusCode(200)
+          .body("data.id", hasItem(userId));
+
+      List<Integer> idsUnrelated = given()
+          .queryParam("type", "SPONSOR")
+          .queryParam("search", "Qy7vBw9kLm2NoHit" + marker)
+          .when()
+          .get(BASE_PATH)
+          .then()
+          .statusCode(200)
+          .extract()
+          .path("data.id");
+      assertFalse(idsUnrelated.contains(userId));
     }
   }
 
@@ -358,24 +474,21 @@ class AdminResourceUserTest {
 
     @Test
     @TestSecurity(user = "admin", roles = "ADM")
-    @DisplayName("retorna 400 quando type=MEMBER (não implementado)")
-    void createMemberUser_returns400() {
-      var payload = new HashMap<String, Object>();
-      payload.put("user", Map.of(
-          "email", uniqueEmail("member-create"),
-          "name", "Membro Teste",
-          "document", uniqueDocument(),
-          "code", uniqueCode(),
-          "type", "MEMBER"
-      ));
-
+    @DisplayName("retorna 201 quando type=MEMBER com dados de membro válidos")
+    void createMemberUser_returns201() {
+      String email = uniqueEmail("member-create");
+      String code = uniqueCode();
       given()
           .contentType(ContentType.JSON)
-          .body(payload)
+          .body(memberUserPayload(email, code))
           .when()
           .post(BASE_PATH)
           .then()
-          .statusCode(400);
+          .statusCode(201)
+          .body("status", is("OK"))
+          .body("data.email", is(email))
+          .body("data.type", is("MEMBER"))
+          .body("data.member", notNullValue());
     }
   }
 
@@ -474,6 +587,40 @@ class AdminResourceUserTest {
           .put(BASE_PATH + "/999999")
           .then()
           .statusCode(404);
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("retorna 200 ao atualizar apenas dados do membro (PUT parcial)")
+    void updateMemberUserOnlyMemberData_returns200() {
+      String email = uniqueEmail("update-member-profile");
+      String code = uniqueCode();
+
+      Long userId = given()
+          .contentType(ContentType.JSON)
+          .body(memberUserPayload(email, code))
+          .when()
+          .post(BASE_PATH)
+          .then()
+          .statusCode(201)
+          .extract()
+          .jsonPath()
+          .getLong("data.id");
+
+      String newWhatsapp = "11" + String.format("%09d", ThreadLocalRandom.current().nextInt(0, 1_000_000_000));
+
+      given()
+          .contentType(ContentType.JSON)
+          .body(Map.of("member", Map.of(
+              "fullname", "Nome Completo Atualizado",
+              "whatsapp", newWhatsapp)))
+          .when()
+          .put(BASE_PATH + "/" + userId)
+          .then()
+          .statusCode(200)
+          .body("status", is("OK"))
+          .body("data.member.fullname", is("Nome Completo Atualizado"))
+          .body("data.member.whatsapp", is(newWhatsapp));
     }
   }
 

@@ -1,6 +1,7 @@
 package backoffice.v1.dtos.user;
 
 import backoffice.common.annotations.UnmaskNumber;
+import backoffice.v1.dtos.member.MemberDataUpdateDTO;
 import backoffice.v1.dtos.sponsor.SponsorDataUpdateDTO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -29,4 +30,7 @@ public class UserWithSponsorUpdateDTO {
 
   @Valid
   private SponsorDataUpdateDTO sponsor;
+
+  @Valid
+  private MemberDataUpdateDTO member;
 }

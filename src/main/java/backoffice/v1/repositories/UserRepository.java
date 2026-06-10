@@ -3,12 +3,14 @@ package backoffice.v1.repositories;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
 import backoffice.common.database.Pageable;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.entities.User;
+import backoffice.v1.entities.enums.MemberTypeEnum;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
 import backoffice.v1.entities.enums.SponsorPersonaEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
@@ -18,6 +20,25 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class UserRepository implements PanacheRepositoryBase<User, Long> {
+
+  private static String escapeLikePattern(String raw) {
+    return raw
+        .replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+        .toLowerCase(Locale.ROOT);
+  }
+
+  private static String digitsOnly(String raw) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < raw.length(); i++) {
+      char c = raw.charAt(i);
+      if (c >= '0' && c <= '9') {
+        sb.append(c);
+      }
+    }
+    return sb.toString();
+  }
 
   public Optional<User> findByEmail(String email) {
     return find("email = ?1", email).firstResultOptional();
@@ -44,7 +65,8 @@ public class UserRepository implements PanacheRepositoryBase<User, Long> {
   }
 
   public Pageable<User> findAllPaginated(UserTypeEnum type, SponsorTierEnum tier,
-      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, Boolean isActive, PageDTO pageDTO) {
+      SponsorEntityTypeEnum entityType, SponsorPersonaEnum persona, MemberTypeEnum memberType,
+      Boolean isActive, String search, PageDTO pageDTO) {
     var sb = new StringBuilder();
     Map<String, Object> params = new HashMap<>();
     List<String> conditions = new ArrayList<>();
@@ -73,9 +95,38 @@ public class UserRepository implements PanacheRepositoryBase<User, Long> {
       conditions.add(sub.toString());
     }
 
+    if (memberType != null) {
+      conditions.add("exists (select 1 from Member mmf where mmf.user = u and mmf.type = :memberType)");
+      params.put("memberType", memberType);
+    }
+
     if (isActive != null) {
       conditions.add("u.isAccountActive = :isActive");
       params.put("isActive", isActive);
+    }
+
+    if (search != null && !search.isBlank()) {
+      String term = search.trim();
+      params.put("searchLike", "%" + escapeLikePattern(term) + "%");
+      String likeClause = " like :searchLike escape '\\'";
+      List<String> searchOrs = new ArrayList<>();
+      searchOrs.add("lower(u.name)" + likeClause);
+      searchOrs.add("lower(u.code)" + likeClause);
+      searchOrs.add("lower(u.document)" + likeClause);
+      searchOrs.add(
+          "exists (select 1 from Sponsor s2 where s2.user = u and lower(s2.publicName)" + likeClause + ")");
+      String digits = digitsOnly(term);
+      if (!digits.isEmpty()) {
+        params.put("docDigitsLike", "%" + digits + "%");
+        searchOrs.add(
+            "cast(function('regexp_replace', u.document, '[^0-9]', '', 'g') as string) like :docDigitsLike");
+      }
+      if (UserTypeEnum.MEMBER.equals(type)) {
+        searchOrs.add(
+            "exists (select 1 from Member mm2 where mm2.user = u and (lower(mm2.fullname)" + likeClause
+                + " or lower(mm2.whatsapp)" + likeClause + "))");
+      }
+      conditions.add("(" + String.join(" or ", searchOrs) + ")");
     }
 
     if (conditions.isEmpty()) {

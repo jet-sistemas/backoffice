@@ -1,6 +1,7 @@
 package backoffice.v1.dtos.user;
 
 import backoffice.v1.dtos.sponsor.SponsorDataCreateDTO;
+import backoffice.v1.dtos.member.MemberDataCreateDTO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -20,4 +21,7 @@ public class UserWithSponsorCreateDTO {
 
   @Valid
   private SponsorDataCreateDTO sponsor;
+
+  @Valid
+  private MemberDataCreateDTO member;
 }

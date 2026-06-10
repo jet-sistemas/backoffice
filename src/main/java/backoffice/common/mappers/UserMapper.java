@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import backoffice.common.database.Pageable;
+import backoffice.v1.dtos.member.MemberDTO;
 import backoffice.v1.dtos.user.UserCreateDTO;
 import backoffice.v1.dtos.user.UserDTO;
 import backoffice.v1.dtos.user.UserMinDTO;
@@ -56,6 +57,11 @@ public class UserMapper {
   }
 
   public static UserWithSponsorDTO fromEntityToUserWithSponsorDTO(User user, Sponsor sponsor) {
+    return fromEntityToUserWithSponsorDTO(user, sponsor, null);
+  }
+
+  public static UserWithSponsorDTO fromEntityToUserWithSponsorDTO(User user, Sponsor sponsor,
+      MemberDTO member) {
     var builder = UserWithSponsorDTO.builder()
         .id(user.getId())
         .email(user.getEmail())
@@ -70,6 +76,9 @@ public class UserMapper {
     if (sponsor != null) {
       builder.sponsor(SponsorMapper.fromEntityToSponsorDTOWithoutUser(sponsor));
     }
+    if (member != null) {
+      builder.member(member);
+    }
 
     return builder.build();
   }
@@ -83,8 +92,16 @@ public class UserMapper {
 
   public static Pageable<UserWithSponsorDTO> fromEntityToPageableDTO(
       Pageable<User> data, Map<Long, Sponsor> sponsorsByUserId) {
+    return fromEntityToPageableDTO(data, sponsorsByUserId, Map.of());
+  }
+
+  public static Pageable<UserWithSponsorDTO> fromEntityToPageableDTO(
+      Pageable<User> data, Map<Long, Sponsor> sponsorsByUserId, Map<Long, MemberDTO> membersByUserId) {
     List<UserWithSponsorDTO> dtos = data.getData().stream()
-        .map(user -> fromEntityToUserWithSponsorDTO(user, sponsorsByUserId.get(user.getId())))
+        .map(user -> fromEntityToUserWithSponsorDTO(
+            user,
+            sponsorsByUserId.get(user.getId()),
+            membersByUserId.get(user.getId())))
         .toList();
 
     return Pageable.<UserWithSponsorDTO>builder()

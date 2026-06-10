@@ -5,6 +5,7 @@ import java.time.Instant;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
+import backoffice.v1.dtos.member.MemberDTO;
 import backoffice.v1.dtos.sponsor.SponsorDTO;
 import backoffice.v1.entities.enums.UserTypeEnum;
 import lombok.AllArgsConstructor;
@@ -29,4 +30,7 @@ public class UserWithSponsorDTO {
 
   @JsonInclude(Include.NON_NULL)
   private SponsorDTO sponsor;
+
+  @JsonInclude(Include.NON_NULL)
+  private MemberDTO member;
 }

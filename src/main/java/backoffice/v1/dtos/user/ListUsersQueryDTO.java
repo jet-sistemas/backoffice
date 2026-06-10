@@ -4,10 +4,12 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 
 import backoffice.common.validators.EnumConstraint;
+import backoffice.v1.entities.enums.MemberTypeEnum;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
 import backoffice.v1.entities.enums.SponsorPersonaEnum;
 import backoffice.v1.entities.enums.SponsorTierEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
+import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.QueryParam;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -42,9 +44,20 @@ public class ListUsersQueryDTO {
   @EnumConstraint(enumClass = SponsorPersonaEnum.class, message = "Persona inválida.")
   private String persona;
 
+  @Parameter(description = "Tipo de membro (SUBSCRIBER / SPONSORED); só aplicável quando type=MEMBER", schema = @Schema(enumeration = {
+      "SUBSCRIBER", "SPONSORED" }))
+  @QueryParam("memberType")
+  @EnumConstraint(enumClass = MemberTypeEnum.class, message = "Tipo de membro inválido.")
+  private String memberType;
+
   @Parameter(description = "Filtrar por conta ativa/inativa")
   @QueryParam("isActive")
   private Boolean isActive;
+
+  @Parameter(description = "Busca textual: nome da conta, nome público do patrocinador, documento ou código")
+  @QueryParam("search")
+  @Size(max = 100, message = "O termo de busca excede o tamanho máximo permitido.")
+  private String search;
 
   @Parameter(description = "Número da página (0-based)")
   @QueryParam("page")
@@ -80,5 +93,23 @@ public class ListUsersQueryDTO {
       return null;
     }
     return SponsorPersonaEnum.valueOf(persona.trim().toUpperCase());
+  }
+
+  public MemberTypeEnum resolveMemberType() {
+    if (memberType == null || memberType.isBlank()) {
+      return null;
+    }
+    return MemberTypeEnum.valueOf(memberType.trim().toUpperCase());
+  }
+
+  /**
+   * Termo de busca para o repositório; {@code null} se ausente ou só espaços.
+   * (Validação de tamanho máximo via {@link Size} / Bean Validation.)
+   */
+  public String resolveSearch() {
+    if (search == null || search.isBlank()) {
+      return null;
+    }
+    return search.trim();
   }
 }

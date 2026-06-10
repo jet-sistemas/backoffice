@@ -2,6 +2,7 @@ package backoffice.v1.services;
 
 import backoffice.common.database.Pageable;
 import backoffice.common.exceptions.MessageErrorEnum;
+import backoffice.common.exceptions.customs.BusinessException;
 import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.mappers.BenefitMapper;
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
@@ -59,7 +60,24 @@ public class BenefitService {
   @Transactional
   public void deactivate(Long benefitId) {
     Benefit benefit = findEntityById(benefitId);
+    if (!benefit.isActive()) {
+      return;
+    }
     benefit.setActive(false);
+    benefitRepository.persistAndFlush(benefit);
+  }
+
+  @Transactional
+  public void activate(Long benefitId) {
+    Benefit benefit = findEntityById(benefitId);
+    if (benefit.isActive()) {
+      return;
+    }
+    Sponsor sponsor = benefit.getSponsor();
+    if (sponsor != null && !sponsor.isActive()) {
+      throw new BusinessException(MessageErrorEnum.SPONSOR_NOT_ACTIVE.getMessage(), 400);
+    }
+    benefit.setActive(true);
     benefitRepository.persistAndFlush(benefit);
   }
 
