@@ -169,6 +169,7 @@ Se algo falhar, **não faça cutover** — prod público continua em `backoffice
 
 | Problema | Causa provável | Solução |
 |---|---|---|
+| Workflow falha no build native (SecureRandom / NTLMEngineImpl) | AWS SDK + Apache HttpClient no classpath | Já corrigido em `application.properties` via `--initialize-at-run-time=NTLMEngineImpl,CachedSupplier`. Re-run workflow. |
 | Workflow falha no build native (OOM) | GraalVM sem RAM no runner | Workflow já usa `-Dquarkus.native.native-image-xmx=6g`. Re-run. Repo privado tem 7 GB no runner. |
 | Workflow falha no passo Docker build | Binário `target/*-runner` ausente | Verifique logs do `mvnw package -Dnative`; corrija erro de compilação/reflexão primeiro. |
 | `ImagePullBackOff` no Railway | GHCR privado sem credenciais | Configure Registry Credentials (Seção B) ou torne package público. |
