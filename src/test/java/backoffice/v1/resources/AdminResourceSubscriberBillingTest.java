@@ -600,6 +600,62 @@ class AdminResourceSubscriberBillingTest {
         .body("data.member.subscriber.status", is("OVERDUE"));
   }
 
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("reativar assinante vencido restaura status OVERDUE pelo nextDueDate, não ACTIVE")
+  void deactivateThenActivateSubscriber_restoresOverdueStatus() {
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(uniqueEmail("sub-activate-overdue"), uniqueCode(), uniqueWhatsapp()))
+        .when()
+        .post(USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of("nextDueDate", "2020-01-10"))
+        .when()
+        .patch(USER_PATH + "/" + userId + "/subscriber")
+        .then()
+        .statusCode(200)
+        .body("data.member.subscriber.status", is("OVERDUE"));
+
+    given()
+        .when()
+        .patch(USER_PATH + "/" + userId + "/deactivate")
+        .then()
+        .statusCode(200);
+
+    given()
+        .when()
+        .get(USER_PATH + "/" + userId)
+        .then()
+        .statusCode(200)
+        .body("data.member.subscriber.status", is("INACTIVE"));
+
+    given()
+        .when()
+        .patch(USER_PATH + "/" + userId + "/activate")
+        .then()
+        .statusCode(200);
+
+    SubscriberMember sub = subscriberMemberRepository.findByMemberUserId((long) userId)
+        .orElseThrow();
+    assertEquals(MemberStatusEnum.OVERDUE, sub.getStatus());
+    assertEquals(LocalDate.of(2020, 1, 10), sub.getNextDueDate());
+
+    given()
+        .when()
+        .get(USER_PATH + "/" + userId)
+        .then()
+        .statusCode(200)
+        .body("data.accountActive", is(true))
+        .body("data.member.subscriber.status", is("OVERDUE"));
+  }
+
   private void seedStaleOverdueState(int userId, LocalDate nextDueDate) {
     QuarkusTransaction.requiringNew().run(() -> {
       SubscriberMember sub = subscriberMemberRepository.findByMemberUserId((long) userId)

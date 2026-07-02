@@ -335,7 +335,7 @@ public class MemberService {
       member.setActive(true);
       memberRepository.persistAndFlush(member);
       subscriberMemberRepository.findByMemberId(member.getId()).ifPresent(sub -> {
-        sub.setStatus(MemberStatusEnum.ACTIVE);
+        memberBillingService.restoreSubscriberStatusOnMemberActivation(sub);
         subscriberMemberRepository.persistAndFlush(sub);
       });
     });
