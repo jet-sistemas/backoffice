@@ -53,7 +53,7 @@ public class AdminService {
   private MemberBillingService memberBillingService;
 
   @Transactional
-  public UserWithSponsorDTO createUser(UserWithSponsorCreateDTO dto) {
+  public UserWithSponsorDTO createUser(UserWithSponsorCreateDTO dto, Long adminActorId) {
     UserCreateDTO userData = dto.getUser();
     UserTypeEnum type = resolveUserType(userData.getType());
 
@@ -71,7 +71,7 @@ public class AdminService {
       sponsor = sponsorService.create(dto.getSponsor(), user);
     }
     if (UserTypeEnum.MEMBER.equals(type)) {
-      memberService.create(dto.getMember(), user);
+      memberService.create(dto.getMember(), user, adminActorId);
     }
 
     MemberDTO memberDto = null;

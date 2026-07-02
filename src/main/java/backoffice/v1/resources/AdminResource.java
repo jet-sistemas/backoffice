@@ -59,7 +59,7 @@ public class AdminResource implements AdminApi {
 
   @Override
   public Response createUser(UserWithSponsorCreateDTO dto) {
-    var result = service.createUser(dto);
+    var result = service.createUser(dto, currentActorId().orElse(null));
     var response = ResponseModel.success(Status.CREATED.getStatusCode(), result);
     return Response.status(Status.CREATED).entity(response).build();
   }

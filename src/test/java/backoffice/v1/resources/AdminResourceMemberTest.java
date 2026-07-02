@@ -6,9 +6,13 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
+import backoffice.common.utils.TokenUtils;
+import backoffice.v1.entities.User;
+import backoffice.v1.services.UserService;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.security.TestSecurity;
 import io.restassured.http.ContentType;
+import jakarta.inject.Inject;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,6 +24,9 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 class AdminResourceMemberTest {
   private static final String USER_PATH = "/v1/admin/user";
+
+  @Inject
+  UserService userService;
 
   private static String uniqueDocument() {
     long t = System.currentTimeMillis() % 100_000_000_000L;
@@ -65,20 +72,21 @@ class AdminResourceMemberTest {
     return payload;
   }
 
-  private static Map<String, Object> sponsorUserPayload(String email, String code) {
+  private static Map<String, Object> adminUserPayload(String email, String code) {
     var payload = new HashMap<String, Object>();
     payload.put("user", Map.of(
         "email", email,
-        "name", "Patroc Teste",
+        "name", "Admin Teste",
         "document", uniqueDocument(),
         "code", code,
-        "type", "SPONSOR"));
-    payload.put("sponsor", Map.of(
-        "publicName", "Patroc " + System.nanoTime(),
-        "tier", "GOLD",
-        "entityType", "COMPANY",
-        "persona", "OTHER"));
+        "type", "ADM"));
     return payload;
+  }
+
+  private String bearerTokenForUserId(long userId) {
+    User user = userService.findById(userId)
+        .orElseThrow(() -> new AssertionError("Usuário não encontrado: " + userId));
+    return TokenUtils.generateToken(user);
   }
 
   @Test
@@ -221,13 +229,13 @@ class AdminResourceMemberTest {
 
     @Test
     @TestSecurity(user = "admin", roles = "ADM")
-    @DisplayName("cria membro SPONSORED vinculado a patrocinador ativo")
+    @DisplayName("cria membro SPONSORED concedido pelo ADM autenticado (JWT)")
     void createSponsoredMember_returns201() {
-      String sponsorEmail = uniqueEmail("sponsor-for-member");
-      String sponsorCode = "P" + String.format("%04d", (int) (Math.random() * 9999));
-      int sponsorUserId = given()
+      String adminEmail = uniqueEmail("admin-for-sponsored");
+      String adminCode = "A" + String.format("%04d", (int) (Math.random() * 9999));
+      int adminUserId = given()
           .contentType(ContentType.JSON)
-          .body(sponsorUserPayload(sponsorEmail, sponsorCode))
+          .body(adminUserPayload(adminEmail, adminCode))
           .when()
           .post(USER_PATH)
           .then()
@@ -236,7 +244,6 @@ class AdminResourceMemberTest {
           .path("data.id");
 
       var sponsored = new HashMap<String, Object>();
-      sponsored.put("grantedByUserId", sponsorUserId);
       sponsored.put("startAt", LocalDate.now().toString());
       var m = new HashMap<String, Object>();
       m.put("fullname", "Patrocinado Teste");
@@ -254,6 +261,7 @@ class AdminResourceMemberTest {
 
       given()
           .contentType(ContentType.JSON)
+          .auth().oauth2(bearerTokenForUserId(adminUserId))
           .body(payload)
           .when()
           .post(USER_PATH)
@@ -261,10 +269,41 @@ class AdminResourceMemberTest {
           .statusCode(201)
           .body("data.member.type", is("SPONSORED"))
           .body("data.member.sponsored", notNullValue())
-          .body("data.member.sponsored.grantedByUserId", is(sponsorUserId))
-          .body("data.member.sponsored.grantedByUser.id", is(sponsorUserId))
-          .body("data.member.sponsored.grantedByUser.email", is(sponsorEmail))
-          .body("data.member.sponsored.grantedByUser.name", is("Patroc Teste"));
+          .body("data.member.sponsored.grantedByUserId", is(adminUserId))
+          .body("data.member.sponsored.grantedByUser.id", is(adminUserId))
+          .body("data.member.sponsored.grantedByUser.email", is(adminEmail))
+          .body("data.member.sponsored.grantedByUser.name", is("Admin Teste"))
+          .body("data.member.sponsored.grantedByUser.type", is("ADM"));
+    }
+
+    @Test
+    @TestSecurity(user = "admin", roles = "ADM")
+    @DisplayName("retorna 400 ao criar SPONSORED sem identificação do ADM no JWT")
+    void createSponsoredMember_withoutJwtActor_returns400() {
+      var sponsored = new HashMap<String, Object>();
+      sponsored.put("startAt", LocalDate.now().toString());
+      var m = new HashMap<String, Object>();
+      m.put("fullname", "Patrocinado Sem Actor");
+      m.put("whatsapp", uniqueWhatsapp());
+      m.put("type", "SPONSORED");
+      m.put("sponsored", sponsored);
+      var payload = new HashMap<String, Object>();
+      payload.put("user", Map.of(
+          "email", uniqueEmail("sponsored-no-actor"),
+          "name", "Membro Sem Actor",
+          "document", uniqueDocument(),
+          "code", uniqueCode(),
+          "type", "MEMBER"));
+      payload.put("member", m);
+
+      given()
+          .contentType(ContentType.JSON)
+          .body(payload)
+          .when()
+          .post(USER_PATH)
+          .then()
+          .statusCode(400)
+          .body("status", is("ERROR"));
     }
 
     @Test
