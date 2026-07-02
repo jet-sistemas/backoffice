@@ -196,7 +196,7 @@ WHERE sm.member_id = m.id
   AND sm.overdue_due_advance_pending IS DISTINCT FROM v.overdue_pending;
 
 -- -----------------------------------------------------------------------------
--- 5) SPONSORED_MEMBER (5) — concedente = sponsor_01 (ativo)
+-- 5) SPONSORED_MEMBER (5) — concedente = ADM (quem vinculou pela associação)
 -- -----------------------------------------------------------------------------
 INSERT INTO sponsored_member (member_id, granted_by_user_id, start_at, end_at, reason, is_active, created_at, updated_at)
 SELECT m.id, grantor.id, CURRENT_DATE - 30, NULL, 'Patrocínio associação (seed dev)', true, NOW(), NOW()
@@ -209,7 +209,7 @@ FROM (VALUES
 ) AS v(email)
 JOIN users u ON u.email = v.email
 JOIN members m ON m.user_id = u.id
-JOIN users grantor ON grantor.email = 'sponsor_01@gmail.com'
+JOIN users grantor ON grantor.email = 'carlosmiranda19122@gmail.com'
 WHERE NOT EXISTS (
   SELECT 1 FROM sponsored_member sp
   WHERE sp.member_id = m.id AND sp.granted_by_user_id = grantor.id

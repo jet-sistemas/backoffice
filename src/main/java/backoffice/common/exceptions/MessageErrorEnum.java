@@ -32,8 +32,10 @@ public enum MessageErrorEnum {
       "Membros assinantes não devem enviar bloco de patrocínio (sponsored); use apenas subscriber."),
   MEMBER_SPONSORED_EXTRA_INVALID(
       "Membros patrocinados não devem enviar bloco de mensalidade (subscriber); use apenas sponsored."),
+  MEMBER_SPONSORED_ACTOR_REQUIRED(
+      "Não foi possível identificar o administrador autenticado para conceder o patrocínio."),
   MEMBER_SPONSORED_GRANT_INVALID(
-      "O usuário concedente deve existir, ser patrocinador (SPONSOR ou SPONSOR_MEMBER) e possuir registro de patrocinador ativo."),
+      "O usuário concedente deve existir e ser administrador (ADM)."),
   MEMBER_SUBSCRIBER_NOT_FOUND("Este membro não possui cadastro de assinante."),
   MEMBER_SUBSCRIBER_UPDATE_INVALID("Não é possível atualizar mensalidade: membro não é assinante."),
   SUBSCRIBER_PAYMENT_ALREADY_REGISTERED("Pagamento deste ciclo já registrado."),

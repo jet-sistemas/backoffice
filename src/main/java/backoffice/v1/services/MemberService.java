@@ -1,6 +1,5 @@
 package backoffice.v1.services;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -15,6 +14,7 @@ import backoffice.common.exceptions.customs.ConflictException;
 import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.mappers.MemberMapper;
 import backoffice.common.utils.MemberBillingUtil;
+import backoffice.v1.dtos.billing.SubscriberMemberConfigSnapshot;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.member.MemberDTO;
 import backoffice.v1.dtos.member.MemberDataCreateDTO;
@@ -22,16 +22,14 @@ import backoffice.v1.dtos.member.MemberDataUpdateDTO;
 import backoffice.v1.dtos.member.SponsoredDataCreateDTO;
 import backoffice.v1.dtos.member.SubscriberDataCreateDTO;
 import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
-import backoffice.v1.dtos.billing.SubscriberMemberConfigSnapshot;
 import backoffice.v1.entities.Member;
 import backoffice.v1.entities.SponsoredMember;
+import backoffice.v1.entities.SponsoredMember.SponsoredMemberId;
 import backoffice.v1.entities.SubscriberMember;
 import backoffice.v1.entities.User;
-import backoffice.v1.entities.SponsoredMember.SponsoredMemberId;
 import backoffice.v1.entities.enums.MemberStatusEnum;
 import backoffice.v1.entities.enums.MemberTypeEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
-import backoffice.v1.entities.Sponsor;
 import backoffice.v1.repositories.MemberRepository;
 import backoffice.v1.repositories.SponsoredMemberRepository;
 import backoffice.v1.repositories.SubscriberMemberRepository;
@@ -56,11 +54,8 @@ public class MemberService {
   @Inject
   private MemberBillingService memberBillingService;
 
-  @Inject
-  private SponsorService sponsorService;
-
   @Transactional
-  public MemberDTO create(MemberDataCreateDTO dto, User user) {
+  public MemberDTO create(MemberDataCreateDTO dto, User user, Long adminActorId) {
     validateMemberForUser(user);
     validateUniqueWhatsapp(dto.getWhatsapp());
 
@@ -73,7 +68,7 @@ public class MemberService {
     if (memberType == MemberTypeEnum.SUBSCRIBER) {
       createSubscriberRow(member, dto.getSubscriber());
     } else if (memberType == MemberTypeEnum.SPONSORED) {
-      createSponsoredRow(member, dto.getSponsored());
+      createSponsoredRow(member, dto.getSponsored(), adminActorId);
     }
 
     return loadMemberDto(member.getId());
@@ -119,10 +114,13 @@ public class MemberService {
     subscriberMemberRepository.persistAndFlush(row);
   }
 
-  private void createSponsoredRow(Member member, SponsoredDataCreateDTO spDto) {
-    User grantUser = userService.findById(spDto.getGrantedByUserId())
+  private void createSponsoredRow(Member member, SponsoredDataCreateDTO spDto, Long adminActorId) {
+    if (adminActorId == null) {
+      throw new BadRequestException(MessageErrorEnum.MEMBER_SPONSORED_ACTOR_REQUIRED.getMessage());
+    }
+    User grantUser = userService.findById(adminActorId)
         .orElseThrow(() -> new BadRequestException(MessageErrorEnum.MEMBER_SPONSORED_GRANT_INVALID.getMessage()));
-    validateGrantUser(grantUser);
+    validateAdminGrantUser(grantUser);
 
     if (sponsoredMemberRepository.existsByMemberId(member.getId())) {
       throw new ConflictException(MessageErrorEnum.MEMBER_ALREADY_SPONSORED.getMessage());
@@ -140,14 +138,8 @@ public class MemberService {
     sponsoredMemberRepository.persistAndFlush(row);
   }
 
-  private void validateGrantUser(User grantUser) {
-    if (!UserTypeEnum.SPONSOR.equals(grantUser.getType())
-        && !UserTypeEnum.SPONSOR_MEMBER.equals(grantUser.getType())) {
-      throw new BadRequestException(MessageErrorEnum.MEMBER_SPONSORED_GRANT_INVALID.getMessage());
-    }
-    Sponsor sponsor = sponsorService.findByUserId(grantUser.getId())
-        .orElseThrow(() -> new BadRequestException(MessageErrorEnum.MEMBER_SPONSORED_GRANT_INVALID.getMessage()));
-    if (!sponsor.isActive()) {
+  private void validateAdminGrantUser(User grantUser) {
+    if (!UserTypeEnum.ADM.equals(grantUser.getType())) {
       throw new BadRequestException(MessageErrorEnum.MEMBER_SPONSORED_GRANT_INVALID.getMessage());
     }
   }
@@ -336,7 +328,7 @@ public class MemberService {
       member.setActive(true);
       memberRepository.persistAndFlush(member);
       subscriberMemberRepository.findByMemberId(member.getId()).ifPresent(sub -> {
-        sub.setStatus(MemberStatusEnum.ACTIVE);
+        memberBillingService.restoreSubscriberStatusOnMemberActivation(sub);
         subscriberMemberRepository.persistAndFlush(sub);
       });
     });

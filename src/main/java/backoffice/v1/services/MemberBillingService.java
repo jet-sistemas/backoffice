@@ -120,6 +120,12 @@ public class MemberBillingService {
     sub.setStatus(MemberBillingRules.expectedAutomationStatus(today, dueSoonDays, sub.getNextDueDate()));
   }
 
+  /** Recalcula status automático ao reativar membro (sai de {@link MemberStatusEnum#INACTIVE}). */
+  public void restoreSubscriberStatusOnMemberActivation(SubscriberMember sub) {
+    LocalDate today = LocalDate.now(billingZone());
+    sub.setStatus(MemberBillingRules.expectedAutomationStatus(today, dueSoonDays, sub.getNextDueDate()));
+  }
+
   private int runAutomationPassInBatches(LocalDate today, LocalDate windowEnd, MemberStatusEnum phase) {
     int changed = 0;
     long afterId = 0L;
