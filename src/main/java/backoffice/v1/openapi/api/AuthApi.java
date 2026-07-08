@@ -8,6 +8,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import backoffice.v1.dtos.auth.AuthCreateDTO;
+import backoffice.v1.dtos.auth.ChangePasswordRequestDTO;
 import backoffice.v1.openapi.dto.EnvelopeAuthDTO;
 import backoffice.v1.openapi.dto.EnvelopeAuthExtDTO;
 import backoffice.v1.openapi.dto.EnvelopeErrorDTO;
@@ -58,6 +59,15 @@ public interface AuthApi {
 			@APIResponse(responseCode = "200", description = "Autenticação bem-sucedida", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeAuthDTO.class)))
 	})
 	Response signIn(@Valid AuthCreateDTO dto);
+
+	@POST
+	@Path("/change-password")
+	@Authenticated
+	@Operation(summary = "Trocar senha", description = "Troca a senha do usuário autenticado. Permitido mesmo com troca obrigatória pendente.")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Senha alterada", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeAuthExtDTO.class)))
+	})
+	Response changePassword(@Valid ChangePasswordRequestDTO dto, @Context SecurityContext ctx);
 
 	@GET
 	@Path("/me")

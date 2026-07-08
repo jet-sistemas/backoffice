@@ -12,6 +12,7 @@ import backoffice.v1.dtos.user.UserWithSponsorDTO;
 import backoffice.v1.dtos.user.UserWithSponsorUpdateDTO;
 import backoffice.v1.entities.Sponsor;
 import backoffice.v1.entities.User;
+import backoffice.v1.entities.enums.AccountValidationStatusEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
 
 public class UserMapper {
@@ -62,6 +63,11 @@ public class UserMapper {
 
   public static UserWithSponsorDTO fromEntityToUserWithSponsorDTO(User user, Sponsor sponsor,
       MemberDTO member) {
+    return fromEntityToUserWithSponsorDTO(user, sponsor, member, null, false);
+  }
+
+  public static UserWithSponsorDTO fromEntityToUserWithSponsorDTO(User user, Sponsor sponsor,
+      MemberDTO member, AccountValidationStatusEnum accountValidationStatus, boolean canResendInvite) {
     var builder = UserWithSponsorDTO.builder()
         .id(user.getId())
         .email(user.getEmail())
@@ -71,7 +77,11 @@ public class UserMapper {
         .isAccountActive(user.isAccountActive())
         .type(user.getType())
         .avatarUrl(user.getAvatarUrl())
-        .createdAt(user.getCreatedAt());
+        .createdAt(user.getCreatedAt())
+        .emailVerifiedAt(user.getEmailVerifiedAt())
+        .mustChangePassword(user.isMustChangePassword())
+        .accountValidationStatus(accountValidationStatus)
+        .canResendInvite(canResendInvite);
 
     if (sponsor != null) {
       builder.sponsor(SponsorMapper.fromEntityToSponsorDTOWithoutUser(sponsor));

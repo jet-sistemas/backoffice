@@ -26,4 +26,6 @@ public class AuthExtDTO {
 
   private Instant createdAt;
   private Boolean isAccountActive;
+  private Boolean mustChangePassword;
+  private Instant emailVerifiedAt;
 }

@@ -65,6 +65,13 @@ public class AdminResource implements AdminApi {
   }
 
   @Override
+  public Response resendAccountValidation(Long id) {
+    var result = service.resendAccountValidation(id, currentActorId().orElse(null));
+    var response = ResponseModel.success(Status.OK.getStatusCode(), result);
+    return Response.ok(response).build();
+  }
+
+  @Override
   public Response updateUser(Long id, UserWithSponsorUpdateDTO dto) {
     var result = service.updateUser(id, dto);
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);

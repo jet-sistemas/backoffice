@@ -23,6 +23,7 @@ import backoffice.v1.openapi.dto.EnvelopeErrorDTO;
 import backoffice.v1.openapi.dto.EnvelopeMemberDTO;
 import backoffice.v1.openapi.dto.EnvelopeSubscriberBillingListResultDTO;
 import backoffice.v1.openapi.dto.EnvelopeSubscriberPaymentEventListDTO;
+import backoffice.v1.openapi.dto.EnvelopeResendAccountValidationDTO;
 import backoffice.v1.openapi.dto.EnvelopeUserWithSponsorDTO;
 import backoffice.v1.openapi.dto.EnvelopeUserWithSponsorListDTO;
 import backoffice.v1.openapi.dto.EnvelopeVoid;
@@ -79,6 +80,15 @@ public interface AdminApi {
 			@APIResponse(responseCode = "201", description = "Usuário criado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeUserWithSponsorDTO.class)))
 	})
 	Response createUser(@Valid UserWithSponsorCreateDTO dto);
+
+	@POST
+	@Path("/user/{id}/resend-account-validation")
+	@Tag(name = "Admin - Usuários")
+	@Operation(summary = "Reenviar convite de validação", description = "Reenvia convite expirado para conta ainda não validada.")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Convite reenviado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeResendAccountValidationDTO.class)))
+	})
+	Response resendAccountValidation(@PathParam("id") Long id);
 
 	@PUT
 	@Path("/user/{id}")

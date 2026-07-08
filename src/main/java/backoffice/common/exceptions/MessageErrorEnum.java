@@ -56,7 +56,22 @@ public enum MessageErrorEnum {
   UPLOAD_OBJECT_NOT_FOUND("Objeto não encontrado no armazenamento."),
   UPLOAD_KEY_INVALID("A chave do objeto não é válida para esta entidade."),
   UPLOAD_KEY_MISMATCH("A chave informada não corresponde à imagem atual desta entidade."),
-  UPLOAD_RATE_LIMIT("Limite de solicitações de upload excedido. Tente novamente em instantes.");
+  UPLOAD_RATE_LIMIT("Limite de solicitações de upload excedido. Tente novamente em instantes."),
+
+  ACCOUNT_VALIDATION_CODE_INVALID("Código de validação inválido."),
+  ACCOUNT_VALIDATION_CODE_EXPIRED("Código de validação expirado."),
+  ACCOUNT_VALIDATION_INVITE_NOT_FOUND("Convite de validação não encontrado."),
+  ACCOUNT_VALIDATION_INVITE_ALREADY_USED("Convite de validação já utilizado."),
+  ACCOUNT_VALIDATION_INVITE_LOCKED("Convite bloqueado por excesso de tentativas. Solicite reenvio ao administrador."),
+  ACCOUNT_ALREADY_VALIDATED("Conta já validada."),
+  ACCOUNT_VALIDATION_DOCUMENT_MISMATCH("Documento não confere com o cadastro."),
+  PASSWORD_CHANGE_REQUIRED("Troca de senha obrigatória antes de continuar."),
+  PASSWORD_CURRENT_INVALID("Senha atual inválida."),
+  PASSWORD_POLICY_NOT_MET("Nova senha não atende à política de segurança."),
+  PASSWORD_SAME_AS_CURRENT("Nova senha não pode ser igual à senha atual."),
+  PASSWORD_CONFIRMATION_MISMATCH("Confirmação de senha não confere com a nova senha."),
+  EMAIL_SEND_FAILED("Falha ao enviar e-mail de validação."),
+  ACCOUNT_VALIDATION_RESEND_NOT_EXPIRED("Reenvio permitido apenas após expiração do convite atual.");
 
   public String message;
 

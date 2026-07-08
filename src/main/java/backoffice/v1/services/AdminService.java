@@ -9,7 +9,9 @@ import backoffice.common.exceptions.customs.BadRequestException;
 import backoffice.common.exceptions.customs.BusinessException;
 import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.mappers.UserMapper;
+import backoffice.common.utils.PasswordPolicyService;
 import backoffice.common.utils.PasswordUtils;
+import backoffice.v1.dtos.accountvalidation.ResendAccountValidationDTO;
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
@@ -52,6 +54,9 @@ public class AdminService {
   @Inject
   private MemberBillingService memberBillingService;
 
+  @Inject
+  private AccountValidationService accountValidationService;
+
   @Transactional
   public UserWithSponsorDTO createUser(UserWithSponsorCreateDTO dto, Long adminActorId) {
     UserCreateDTO userData = dto.getUser();
@@ -60,11 +65,31 @@ public class AdminService {
     validateTypeRequirements(type, dto);
 
     userService.validateUniqueFields(userData.getEmail(), userData.getDocument(), userData.getCode());
-
-    userData.setPassword(PasswordUtils.hashPass("temp@1234"));
     userData.setType(type.name());
 
+    User adminActor = adminActorId != null
+        ? userService.findById(adminActorId).orElse(null)
+        : null;
+
+    String temporaryPassword;
+    if (type == UserTypeEnum.ADM) {
+      temporaryPassword = PasswordPolicyService.generateTemporaryPassword();
+      userData.setPassword(PasswordUtils.hashPass(temporaryPassword));
+      User user = userService.create(userData);
+      user.setAccountActive(true);
+      user.setMustChangePassword(false);
+      userService.persistAndFlush(user);
+      return UserMapper.fromEntityToUserWithSponsorDTO(user, null, null,
+          accountValidationService.resolveStatus(user), false);
+    }
+
+    temporaryPassword = PasswordPolicyService.generateTemporaryPassword();
+    userData.setPassword(PasswordUtils.hashPass(temporaryPassword));
+
     User user = userService.create(userData);
+    user.setAccountActive(false);
+    user.setMustChangePassword(false);
+    userService.persistAndFlush(user);
 
     Sponsor sponsor = null;
     if (isSponsorType(type)) {
@@ -74,12 +99,15 @@ public class AdminService {
       memberService.create(dto.getMember(), user, adminActorId);
     }
 
+    accountValidationService.createInviteAndSendEmail(user, adminActor, temporaryPassword);
+
     MemberDTO memberDto = null;
     if (UserTypeEnum.MEMBER.equals(type)) {
       memberDto = memberService.findDTOByUserId(user.getId());
     }
 
-    return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor, memberDto);
+    return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor, memberDto,
+        accountValidationService.resolveStatus(user), accountValidationService.canResendInvite(user));
   }
 
   @Transactional
@@ -111,7 +139,13 @@ public class AdminService {
       memberDto = memberService.findDTOByUserId(userId);
     }
 
-    return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor, memberDto);
+    return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor, memberDto,
+        accountValidationService.resolveStatus(user), accountValidationService.canResendInvite(user));
+  }
+
+  @Transactional
+  public ResendAccountValidationDTO resendAccountValidation(Long userId, Long adminActorId) {
+    return accountValidationService.resendExpiredInvite(userId, adminActorId);
   }
 
   @Transactional
@@ -167,7 +201,8 @@ public class AdminService {
           MemberDTO member = UserTypeEnum.MEMBER.equals(user.getType())
               ? memberService.findDTOByUserId(userId)
               : null;
-          return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor, member);
+          return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor, member,
+              accountValidationService.resolveStatus(user), accountValidationService.canResendInvite(user));
         })
         .orElse(null);
   }
@@ -196,7 +231,22 @@ public class AdminService {
         .toList();
     Map<Long, MemberDTO> membersByUserId = memberService.findDTOsByUserIds(memberUserIds);
 
-    return UserMapper.fromEntityToPageableDTO(pageable, sponsorsByUserId, membersByUserId);
+    List<UserWithSponsorDTO> dtos = pageable.getData().stream()
+        .map(user -> UserMapper.fromEntityToUserWithSponsorDTO(
+            user,
+            sponsorsByUserId.get(user.getId()),
+            membersByUserId.get(user.getId()),
+            accountValidationService.resolveStatus(user),
+            accountValidationService.canResendInvite(user)))
+        .toList();
+
+    return Pageable.<UserWithSponsorDTO>builder()
+        .data(dtos)
+        .totalElements(pageable.getTotalElements())
+        .totalPages(pageable.getTotalPages())
+        .pageSize(pageable.getPageSize())
+        .currentPage(pageable.getCurrentPage())
+        .build();
   }
 
   @Transactional
