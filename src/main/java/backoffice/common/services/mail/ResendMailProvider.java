@@ -42,21 +42,7 @@ public class ResendMailProvider implements MailProvider {
     }
 
     String expiresFormatted = FORMATTER.format(payload.expiresAt());
-    String html = """
-        <p>Olá, %s!</p>
-        <p>Sua conta no Jet Backoffice foi criada. Para ativá-la, acesse o link abaixo e informe o código de validação junto com seu documento cadastrado.</p>
-        <p><a href="%s">Validar minha conta</a></p>
-        <p><strong>Código de validação:</strong> %s</p>
-        <p><strong>Senha temporária:</strong> %s</p>
-        <p>Este convite expira em <strong>%s</strong>.</p>
-        <p>No primeiro acesso após a validação, você deverá trocar a senha temporária.</p>
-        <p>Se você não reconhece este cadastro, ignore este e-mail.</p>
-        """.formatted(
-        escapeHtml(payload.userName()),
-        escapeHtml(payload.validationUrl()),
-        escapeHtml(payload.validationCode()),
-        escapeHtml(payload.temporaryPassword()),
-        escapeHtml(expiresFormatted));
+    String html = AccountValidationEmailTemplate.render(payload, expiresFormatted);
 
     String body = """
         {"from":"%s","to":["%s"],"subject":"Valide sua conta Jet","html":"%s"}
@@ -90,13 +76,5 @@ public class ResendMailProvider implements MailProvider {
         .replace("\"", "\\\"")
         .replace("\n", "\\n")
         .replace("\r", "\\r");
-  }
-
-  private static String escapeHtml(String value) {
-    return value
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;");
   }
 }
