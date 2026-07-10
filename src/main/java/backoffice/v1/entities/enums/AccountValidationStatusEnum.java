@@ -4,5 +4,6 @@ public enum AccountValidationStatusEnum {
   NOT_APPLICABLE,
   PENDING,
   INVITE_EXPIRED,
+  PASSWORD_CHANGE_PENDING,
   VALIDATED
 }

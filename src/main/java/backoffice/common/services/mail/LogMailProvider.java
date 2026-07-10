@@ -18,6 +18,8 @@ public class LogMailProvider implements MailProvider {
       DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(ZoneId.of("America/Sao_Paulo"));
 
   private final List<AccountValidationMailPayload> sent = Collections.synchronizedList(new ArrayList<>());
+  private final List<TemporaryPasswordMailPayload> temporaryPasswordSent =
+      Collections.synchronizedList(new ArrayList<>());
 
   @Override
   public void sendAccountValidation(AccountValidationMailPayload payload) {
@@ -29,6 +31,16 @@ public class LogMailProvider implements MailProvider {
         payload.temporaryPassword(),
         payload.validationUrl(),
         FORMATTER.format(payload.expiresAt()));
+  }
+
+  @Override
+  public void sendTemporaryPassword(TemporaryPasswordMailPayload payload) {
+    temporaryPasswordSent.add(payload);
+    LOG.infof(
+        "MAIL[log] to=%s subject=Nova senha temporária Jet tempPassword=%s loginUrl=%s",
+        payload.toEmail(),
+        payload.temporaryPassword(),
+        payload.loginUrl());
   }
 
   public List<AccountValidationMailPayload> getSentMessages() {
@@ -46,7 +58,17 @@ public class LogMailProvider implements MailProvider {
     }
   }
 
+  public TemporaryPasswordMailPayload getLastTemporaryPasswordSent() {
+    synchronized (temporaryPasswordSent) {
+      if (temporaryPasswordSent.isEmpty()) {
+        return null;
+      }
+      return temporaryPasswordSent.get(temporaryPasswordSent.size() - 1);
+    }
+  }
+
   public void clear() {
     sent.clear();
+    temporaryPasswordSent.clear();
   }
 }

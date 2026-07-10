@@ -71,7 +71,9 @@ public enum MessageErrorEnum {
   PASSWORD_SAME_AS_CURRENT("Nova senha não pode ser igual à senha atual."),
   PASSWORD_CONFIRMATION_MISMATCH("Confirmação de senha não confere com a nova senha."),
   EMAIL_SEND_FAILED("Falha ao enviar e-mail de validação."),
-  ACCOUNT_VALIDATION_RESEND_NOT_EXPIRED("Reenvio permitido apenas após expiração do convite atual.");
+  ACCOUNT_VALIDATION_RESEND_NOT_EXPIRED("Reenvio permitido apenas após expiração do convite atual."),
+  ACCOUNT_VALIDATION_RESEND_NOT_APPLICABLE("Não há credenciais elegíveis para reenvio neste momento."),
+  ACCOUNT_TEMPORARY_PASSWORD_RESEND_NOT_ALLOWED("Reenvio de senha temporária não permitido para esta conta.");
 
   public String message;
 

@@ -327,6 +327,7 @@ class AccountValidationResourceTest {
         .path("data.id");
 
     given()
+        .contentType(ContentType.JSON)
         .when()
         .post(ADMIN_USER_PATH + "/" + userId + "/resend-account-validation")
         .then()
@@ -351,6 +352,7 @@ class AccountValidationResourceTest {
     accountValidationCodeRepository.expireActiveInviteForUser((long) userId);
 
     given()
+        .contentType(ContentType.JSON)
         .when()
         .post(ADMIN_USER_PATH + "/" + userId + "/resend-account-validation")
         .then()
@@ -359,5 +361,88 @@ class AccountValidationResourceTest {
         .body("data.accountValidationStatus", is("PENDING"));
 
     assertNotNull(logMailProvider.getLastSent());
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("reenvio de senha temporária após validação envia novo e-mail")
+  void resendTemporaryPassword_afterValidation_success() {
+    String document = uniqueDocument();
+    String email = uniqueEmail("resend-temp-pass");
+
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(email, uniqueCode(), document))
+        .when()
+        .post(ADMIN_USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    var mail = logMailProvider.getLastSent();
+    String token = extractTokenFromUrl(mail.validationUrl());
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of("token", token, "code", mail.validationCode(), "document", document))
+        .when()
+        .post(VALIDATION_PATH)
+        .then()
+        .statusCode(200);
+
+    logMailProvider.clear();
+
+    given()
+        .contentType(ContentType.JSON)
+        .when()
+        .post(ADMIN_USER_PATH + "/" + userId + "/resend-account-validation")
+        .then()
+        .statusCode(200)
+        .body("data.sent", is(true))
+        .body("data.accountValidationStatus", is("PASSWORD_CHANGE_PENDING"))
+        .body("data.resendType", is("TEMPORARY_PASSWORD"));
+
+    var tempMail = logMailProvider.getLastTemporaryPasswordSent();
+    assertNotNull(tempMail);
+    assertEquals(email, tempMail.toEmail());
+  }
+
+  @Test
+  @TestSecurity(user = "admin", roles = "ADM")
+  @DisplayName("reenvio após troca de senha falha")
+  void resendTemporaryPassword_afterPasswordChange_fails() {
+    String document = uniqueDocument();
+    String email = uniqueEmail("resend-after-change");
+
+    int userId = given()
+        .contentType(ContentType.JSON)
+        .body(memberPayload(email, uniqueCode(), document))
+        .when()
+        .post(ADMIN_USER_PATH)
+        .then()
+        .statusCode(201)
+        .extract()
+        .path("data.id");
+
+    var mail = logMailProvider.getLastSent();
+    String token = extractTokenFromUrl(mail.validationUrl());
+
+    given()
+        .contentType(ContentType.JSON)
+        .body(Map.of("token", token, "code", mail.validationCode(), "document", document))
+        .when()
+        .post(VALIDATION_PATH)
+        .then()
+        .statusCode(200);
+
+    userRepository.clearMustChangePassword((long) userId);
+
+    given()
+        .contentType(ContentType.JSON)
+        .when()
+        .post(ADMIN_USER_PATH + "/" + userId + "/resend-account-validation")
+        .then()
+        .statusCode(400);
   }
 }

@@ -36,11 +36,7 @@ public class ResendMailProvider implements MailProvider {
 
   @Override
   public void sendAccountValidation(AccountValidationMailPayload payload) {
-    String apiKey = apiKeyOpt.map(String::trim).filter(s -> !s.isEmpty()).orElse(null);
-    if (apiKey == null) {
-      throw new BusinessException(MessageErrorEnum.EMAIL_SEND_FAILED.getMessage(), 500);
-    }
-
+    String apiKey = requireApiKey();
     String expiresFormatted = FORMATTER.format(payload.expiresAt());
     String html = AccountValidationEmailTemplate.render(payload, expiresFormatted);
 
@@ -49,6 +45,31 @@ public class ResendMailProvider implements MailProvider {
         """
         .formatted(escapeJson(mailFrom), escapeJson(payload.toEmail()), escapeJson(html));
 
+    sendToResend(apiKey, body);
+  }
+
+  @Override
+  public void sendTemporaryPassword(TemporaryPasswordMailPayload payload) {
+    String apiKey = requireApiKey();
+    String html = TemporaryPasswordEmailTemplate.render(payload);
+
+    String body = """
+        {"from":"%s","to":["%s"],"subject":"Nova senha temporária — Jet Backoffice","html":"%s"}
+        """
+        .formatted(escapeJson(mailFrom), escapeJson(payload.toEmail()), escapeJson(html));
+
+    sendToResend(apiKey, body);
+  }
+
+  private String requireApiKey() {
+    String apiKey = apiKeyOpt.map(String::trim).filter(s -> !s.isEmpty()).orElse(null);
+    if (apiKey == null) {
+      throw new BusinessException(MessageErrorEnum.EMAIL_SEND_FAILED.getMessage(), 500);
+    }
+    return apiKey;
+  }
+
+  private void sendToResend(String apiKey, String body) {
     try {
       HttpRequest request = HttpRequest.newBuilder()
           .uri(RESEND_URI)

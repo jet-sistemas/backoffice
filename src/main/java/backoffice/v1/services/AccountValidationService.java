@@ -14,6 +14,7 @@ import backoffice.common.exceptions.customs.ForbiddenException;
 import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.services.mail.AccountValidationMailPayload;
 import backoffice.common.services.mail.EmailService;
+import backoffice.common.services.mail.TemporaryPasswordMailPayload;
 import backoffice.common.utils.DocumentUtils;
 import backoffice.common.utils.PasswordPolicyService;
 import backoffice.common.utils.PasswordUtils;
@@ -21,6 +22,7 @@ import backoffice.v1.dtos.accountvalidation.AccountValidationResultDTO;
 import backoffice.v1.dtos.accountvalidation.ResendAccountValidationDTO;
 import backoffice.v1.entities.AccountValidationCode;
 import backoffice.v1.entities.User;
+import backoffice.v1.entities.enums.AccountValidationResendTypeEnum;
 import backoffice.v1.entities.enums.AccountValidationStatusEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
 import backoffice.v1.repositories.AccountValidationCodeRepository;
@@ -50,6 +52,10 @@ public class AccountValidationService {
   @Inject
   @ConfigProperty(name = "backoffice.account-validation.expiration-days", defaultValue = "7")
   int expirationDays;
+
+  @Inject
+  @ConfigProperty(name = "backoffice.app.login-url", defaultValue = "http://localhost:5173/login")
+  String loginUrl;
 
   public record InviteCredentials(String plainCode, String plainToken, String temporaryPassword) {
   }
@@ -158,7 +164,7 @@ public class AccountValidationService {
   }
 
   @Transactional
-  public ResendAccountValidationDTO resendExpiredInvite(Long userId, Long adminActorId) {
+  public ResendAccountValidationDTO resendInvite(Long userId, Long adminActorId) {
     User user = userService.findById(userId)
         .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
 
@@ -196,11 +202,65 @@ public class AccountValidationService {
         .userId(userId)
         .sent(true)
         .accountValidationStatus(AccountValidationStatusEnum.PENDING)
+        .resendType(AccountValidationResendTypeEnum.INVITE)
         .build();
   }
 
+  @Transactional
+  public ResendAccountValidationDTO resendTemporaryPassword(Long userId, Long adminActorId) {
+    User user = userService.findById(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
+
+    if (user.getType() == UserTypeEnum.ADM) {
+      throw new BadRequestException(MessageErrorEnum.ACCOUNT_TEMPORARY_PASSWORD_RESEND_NOT_ALLOWED.getMessage());
+    }
+
+    if (user.getEmailVerifiedAt() == null) {
+      throw new BadRequestException(MessageErrorEnum.ACCOUNT_VALIDATION_RESEND_NOT_APPLICABLE.getMessage());
+    }
+
+    if (!user.isMustChangePassword()) {
+      throw new BadRequestException(MessageErrorEnum.ACCOUNT_TEMPORARY_PASSWORD_RESEND_NOT_ALLOWED.getMessage());
+    }
+
+    String temporaryPassword = PasswordPolicyService.generateTemporaryPassword();
+    user.setPassword(PasswordUtils.hashPass(temporaryPassword));
+    user.setMustChangePassword(true);
+    userService.persistAndFlush(user);
+
+    sendTemporaryPasswordEmail(user, temporaryPassword);
+
+    return ResendAccountValidationDTO.builder()
+        .userId(userId)
+        .sent(true)
+        .accountValidationStatus(AccountValidationStatusEnum.PASSWORD_CHANGE_PENDING)
+        .resendType(AccountValidationResendTypeEnum.TEMPORARY_PASSWORD)
+        .build();
+  }
+
+  public void sendTemporaryPasswordEmail(User user, String temporaryPassword) {
+    TemporaryPasswordMailPayload payload = new TemporaryPasswordMailPayload(
+        user.getEmail(),
+        user.getName(),
+        temporaryPassword,
+        loginUrl == null ? "" : loginUrl.trim());
+
+    try {
+      emailService.sendTemporaryPassword(payload);
+    } catch (RuntimeException e) {
+      throw new BusinessException(MessageErrorEnum.EMAIL_SEND_FAILED.getMessage(), 500);
+    }
+  }
+
   public AccountValidationStatusEnum resolveStatus(User user) {
-    if (user.getType() == UserTypeEnum.ADM || user.getEmailVerifiedAt() != null) {
+    if (user.getType() == UserTypeEnum.ADM) {
+      return AccountValidationStatusEnum.NOT_APPLICABLE;
+    }
+
+    if (user.getEmailVerifiedAt() != null) {
+      if (user.isMustChangePassword()) {
+        return AccountValidationStatusEnum.PASSWORD_CHANGE_PENDING;
+      }
       return AccountValidationStatusEnum.VALIDATED;
     }
 
@@ -221,6 +281,10 @@ public class AccountValidationService {
 
   public boolean canResendInvite(User user) {
     return resolveStatus(user) == AccountValidationStatusEnum.INVITE_EXPIRED;
+  }
+
+  public boolean canResendTemporaryPassword(User user) {
+    return resolveStatus(user) == AccountValidationStatusEnum.PASSWORD_CHANGE_PENDING;
   }
 
   private Optional<AccountValidationCode> findInviteByToken(String token) {

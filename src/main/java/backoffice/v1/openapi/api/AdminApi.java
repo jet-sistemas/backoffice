@@ -84,7 +84,7 @@ public interface AdminApi {
 	@POST
 	@Path("/user/{id}/resend-account-validation")
 	@Tag(name = "Admin - Usuários")
-	@Operation(summary = "Reenviar convite de validação", description = "Reenvia convite expirado para conta ainda não validada.")
+	@Operation(summary = "Reenviar credenciais", description = "Reenvia convite expirado (conta não validada) ou nova senha temporária (conta validada com troca de senha pendente).")
 	@APIResponses({
 			@APIResponse(responseCode = "200", description = "Convite reenviado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeResendAccountValidationDTO.class)))
 	})

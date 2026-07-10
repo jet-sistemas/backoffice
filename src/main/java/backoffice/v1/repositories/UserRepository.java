@@ -17,6 +17,7 @@ import backoffice.v1.entities.enums.SponsorTierEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.Transactional;
 
 @ApplicationScoped
 public class UserRepository implements PanacheRepositoryBase<User, Long> {
@@ -62,6 +63,11 @@ public class UserRepository implements PanacheRepositoryBase<User, Long> {
 
   public boolean existsByDocumentAndIdNot(String document, Long id) {
     return count("document = ?1 and id != ?2", document, id) > 0;
+  }
+
+  @Transactional
+  public void clearMustChangePassword(Long userId) {
+    update("mustChangePassword = false where id = ?1", userId);
   }
 
   public Pageable<User> findAllPaginated(UserTypeEnum type, SponsorTierEnum tier,

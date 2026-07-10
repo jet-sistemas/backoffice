@@ -63,11 +63,17 @@ public class UserMapper {
 
   public static UserWithSponsorDTO fromEntityToUserWithSponsorDTO(User user, Sponsor sponsor,
       MemberDTO member) {
-    return fromEntityToUserWithSponsorDTO(user, sponsor, member, null, false);
+    return fromEntityToUserWithSponsorDTO(user, sponsor, member, null, false, false);
   }
 
   public static UserWithSponsorDTO fromEntityToUserWithSponsorDTO(User user, Sponsor sponsor,
       MemberDTO member, AccountValidationStatusEnum accountValidationStatus, boolean canResendInvite) {
+    return fromEntityToUserWithSponsorDTO(user, sponsor, member, accountValidationStatus, canResendInvite, false);
+  }
+
+  public static UserWithSponsorDTO fromEntityToUserWithSponsorDTO(User user, Sponsor sponsor,
+      MemberDTO member, AccountValidationStatusEnum accountValidationStatus, boolean canResendInvite,
+      boolean canResendTemporaryPassword) {
     var builder = UserWithSponsorDTO.builder()
         .id(user.getId())
         .email(user.getEmail())
@@ -81,7 +87,8 @@ public class UserMapper {
         .emailVerifiedAt(user.getEmailVerifiedAt())
         .mustChangePassword(user.isMustChangePassword())
         .accountValidationStatus(accountValidationStatus)
-        .canResendInvite(canResendInvite);
+        .canResendInvite(canResendInvite)
+        .canResendTemporaryPassword(canResendTemporaryPassword);
 
     if (sponsor != null) {
       builder.sponsor(SponsorMapper.fromEntityToSponsorDTOWithoutUser(sponsor));

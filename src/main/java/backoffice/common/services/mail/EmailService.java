@@ -20,6 +20,10 @@ public class EmailService {
     resolveProvider().sendAccountValidation(payload);
   }
 
+  public void sendTemporaryPassword(TemporaryPasswordMailPayload payload) {
+    resolveProvider().sendTemporaryPassword(payload);
+  }
+
   private MailProvider resolveProvider() {
     String normalized = providerName == null ? "log" : providerName.trim().toLowerCase();
     for (MailProvider provider : mailProviders) {

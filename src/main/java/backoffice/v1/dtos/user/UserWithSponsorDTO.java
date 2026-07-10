@@ -32,6 +32,7 @@ public class UserWithSponsorDTO {
   private boolean mustChangePassword;
   private AccountValidationStatusEnum accountValidationStatus;
   private boolean canResendInvite;
+  private boolean canResendTemporaryPassword;
 
   @JsonInclude(Include.NON_NULL)
   private SponsorDTO sponsor;
