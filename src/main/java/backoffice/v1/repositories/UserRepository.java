@@ -45,6 +45,17 @@ public class UserRepository implements PanacheRepositoryBase<User, Long> {
     return find("email = ?1", email).firstResultOptional();
   }
 
+  public Optional<User> findByCode(String code) {
+    if (code == null || code.isBlank()) {
+      return Optional.empty();
+    }
+    return find("lower(code) = ?1", code.toLowerCase(Locale.ROOT)).firstResultOptional();
+  }
+
+  public Optional<User> findByDocument(String document) {
+    return find("document = ?1", document).firstResultOptional();
+  }
+
   public boolean existsByEmail(String email) {
     return count("email = ?1", email) > 0;
   }

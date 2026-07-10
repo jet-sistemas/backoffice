@@ -30,6 +30,14 @@ public class UserService {
     return userRepository.findByEmail(email);
   }
 
+  public Optional<User> findByCode(String code) {
+    return userRepository.findByCode(code);
+  }
+
+  public Optional<User> findByDocument(String document) {
+    return userRepository.findByDocument(document);
+  }
+
   public void validateUniqueFields(String email, String document, String code) {
     if (userRepository.existsByEmail(email)) {
       throw new ConflictException("Já existe um usuário com o e-mail informado.");

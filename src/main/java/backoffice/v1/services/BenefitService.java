@@ -57,6 +57,11 @@ public class BenefitService {
     return BenefitMapper.fromEntityToPageableDTO(pageable);
   }
 
+  public Pageable<BenefitDTO> listActiveBySponsorId(Long sponsorId, PageDTO pageDTO) {
+    Pageable<Benefit> pageable = benefitRepository.findActiveBySponsorId(sponsorId, pageDTO);
+    return BenefitMapper.fromEntityToPageableDTO(pageable);
+  }
+
   @Transactional
   public void deactivate(Long benefitId) {
     Benefit benefit = findEntityById(benefitId);

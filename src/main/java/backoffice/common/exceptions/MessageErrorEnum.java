@@ -73,7 +73,15 @@ public enum MessageErrorEnum {
   EMAIL_SEND_FAILED("Falha ao enviar e-mail de validação."),
   ACCOUNT_VALIDATION_RESEND_NOT_EXPIRED("Reenvio permitido apenas após expiração do convite atual."),
   ACCOUNT_VALIDATION_RESEND_NOT_APPLICABLE("Não há credenciais elegíveis para reenvio neste momento."),
-  ACCOUNT_TEMPORARY_PASSWORD_RESEND_NOT_ALLOWED("Reenvio de senha temporária não permitido para esta conta.");
+  ACCOUNT_TEMPORARY_PASSWORD_RESEND_NOT_ALLOWED("Reenvio de senha temporária não permitido para esta conta."),
+
+  CHECKIN_LOOKUP_INVALID("Identificador de membro inválido. Informe um código de 5 caracteres ou um CPF."),
+  CHECKIN_USER_NOT_MEMBER("O usuário encontrado não é um membro."),
+  CHECKIN_MEMBER_NOT_ELIGIBLE("Membro não apto para check-in."),
+  CHECKIN_ALREADY_TODAY("Check-in já realizado hoje para este membro."),
+  CHECKIN_DUPLICATE_CONFIRMATION_REQUIRED(
+      "Confirmação obrigatória para registrar novo check-in no mesmo dia."),
+  CHECKIN_HISTORY_PERIOD_INVALID("Período de histórico inválido.");
 
   public String message;
 

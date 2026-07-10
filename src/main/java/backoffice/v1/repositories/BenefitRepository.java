@@ -24,6 +24,12 @@ public class BenefitRepository implements PanacheRepositoryBase<Benefit, Long> {
     return delete("sponsor.id = ?1", sponsorId);
   }
 
+  public Pageable<Benefit> findActiveBySponsorId(Long sponsorId, PageDTO pageDTO) {
+    var query = find("sponsor.id = ?1 and isActive = true order by createdAt desc", sponsorId)
+        .page(pageDTO.getPagination());
+    return new Pageable<>(query, pageDTO.getOneBasePage());
+  }
+
   public Pageable<Benefit> findAllPaginated(Long sponsorId, Boolean isActive, PageDTO pageDTO) {
     var conditions = new StringBuilder("1=1");
     Map<String, Object> params = new HashMap<>();

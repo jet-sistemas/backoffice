@@ -6,12 +6,23 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import backoffice.common.database.Pageable;
 import backoffice.common.exceptions.MessageErrorEnum;
 import backoffice.common.exceptions.customs.BusinessException;
 import backoffice.common.exceptions.customs.ConflictException;
+import backoffice.common.exceptions.customs.ForbiddenException;
+import backoffice.common.exceptions.customs.NotFoundException;
+import backoffice.common.mappers.BenefitMapper;
 import backoffice.common.mappers.SponsorMapper;
+import backoffice.v1.dtos.benefit.BenefitDTO;
+import backoffice.v1.dtos.sponsor.ListSponsorBenefitsQueryDTO;
+import backoffice.v1.dtos.sponsor.ListSponsorCheckinsQueryDTO;
+import backoffice.v1.dtos.sponsor.SponsorCheckinCreateDTO;
+import backoffice.v1.dtos.sponsor.SponsorCheckinDTO;
 import backoffice.v1.dtos.sponsor.SponsorDataCreateDTO;
 import backoffice.v1.dtos.sponsor.SponsorDataUpdateDTO;
+import backoffice.v1.dtos.sponsor.SponsorMemberPreviewDTO;
+import backoffice.v1.entities.Benefit;
 import backoffice.v1.entities.Sponsor;
 import backoffice.v1.entities.User;
 import backoffice.v1.entities.enums.SponsorEntityTypeEnum;
@@ -27,6 +38,9 @@ public class SponsorService {
 
   @Inject
   private BenefitRepository benefitRepository;
+
+  @Inject
+  private SponsorCheckinService sponsorCheckinService;
 
   public Sponsor create(SponsorDataCreateDTO dto, User user) {
     if (dto.getWhatsapp() != null && !dto.getWhatsapp().isBlank()) {
@@ -70,6 +84,44 @@ public class SponsorService {
         .list()
         .stream()
         .collect(Collectors.toMap(s -> s.getUser().getId(), s -> s));
+  }
+
+  public SponsorMemberPreviewDTO previewMember(Long userId, String lookup) {
+    Sponsor sponsor = requireActiveSponsor(userId);
+    return sponsorCheckinService.preview(sponsor, lookup);
+  }
+
+  public SponsorCheckinDTO createCheckin(Long userId, SponsorCheckinCreateDTO dto) {
+    Sponsor sponsor = requireActiveSponsor(userId);
+    return sponsorCheckinService.create(sponsor, dto);
+  }
+
+  public Pageable<SponsorCheckinDTO> listCheckins(Long userId, ListSponsorCheckinsQueryDTO query) {
+    Sponsor sponsor = requireSponsor(userId);
+    return sponsorCheckinService.listBySponsor(
+        sponsor.getId(),
+        query.getStartDate(),
+        query.getEndDate(),
+        query.toPageDTO());
+  }
+
+  public Pageable<BenefitDTO> listOwnBenefits(Long userId, ListSponsorBenefitsQueryDTO query) {
+    Sponsor sponsor = requireActiveSponsor(userId);
+    Pageable<Benefit> pageable = benefitRepository.findActiveBySponsorId(sponsor.getId(), query.toPageDTO());
+    return BenefitMapper.fromEntityToPageableDTO(pageable);
+  }
+
+  private Sponsor requireSponsor(Long userId) {
+    return findByUserId(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.SPONSOR_NOT_FOUND.getMessage()));
+  }
+
+  private Sponsor requireActiveSponsor(Long userId) {
+    Sponsor sponsor = requireSponsor(userId);
+    if (!sponsor.isActive()) {
+      throw new ForbiddenException(MessageErrorEnum.SPONSOR_NOT_ACTIVE.getMessage());
+    }
+    return sponsor;
   }
 
   public void deactivateByUserId(Long userId) {
