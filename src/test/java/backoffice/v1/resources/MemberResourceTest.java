@@ -5,6 +5,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.nullValue;
 
 import backoffice.common.utils.TokenUtils;
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
@@ -385,7 +386,7 @@ class MemberResourceTest {
           .then()
           .statusCode(200)
           .body("totalElements", greaterThanOrEqualTo(1))
-          .body("data.find { it.name == 'Evento exclusivo' }.sponsor", empty());
+          .body("data.find { it.name == 'Evento exclusivo' }.sponsor", nullValue());
     }
 
     @Test
@@ -433,7 +434,7 @@ class MemberResourceTest {
           .get(BENEFITS_PATH + "?page=1&size=50")
           .then()
           .statusCode(200)
-          .body("data.find { it.name == 'Benefício Inativo' }", empty());
+          .body("data.any { it.name == 'Benefício Inativo' }", is(false));
     }
 
     @Test
@@ -457,7 +458,7 @@ class MemberResourceTest {
           .get(BENEFITS_PATH + "?page=1&size=50")
           .then()
           .statusCode(200)
-          .body("data.find { it.name == 'Benefício Sponsor Inativo' }", empty());
+          .body("data.any { it.name == 'Benefício Sponsor Inativo' }", is(false));
     }
 
     @Test
@@ -519,24 +520,26 @@ class MemberResourceTest {
 
     @Test
     @DisplayName("paginação retorna metadados corretos")
-    void paginationMetadata() {
+    void benefitsPaginationMetadata() {
+      UserWithSponsorDTO sponsor = createSponsor();
       UserWithSponsorDTO member = createActiveMember();
       String memberToken = tokenForMember(member);
+      Long sponsorId = sponsor.getSponsor().getId();
 
       for (int i = 0; i < 3; i++) {
         adminService.createBenefit(BenefitCreateDTO.builder()
-            .name("Benefício Geral " + i)
-            .sponsorId(null)
+            .name("Benefício Paginação " + i)
+            .sponsorId(sponsorId)
             .build());
       }
 
       given()
           .header("Authorization", "Bearer " + memberToken)
           .when()
-          .get(BENEFITS_PATH + "?page=1&size=2")
+          .get(BENEFITS_PATH + "?sponsorId=" + sponsorId + "&page=1&size=2")
           .then()
           .statusCode(200)
-          .body("totalElements", greaterThanOrEqualTo(3))
+          .body("totalElements", is(3))
           .body("pageSize", is(2))
           .body("currentPage", is(1))
           .body("data", hasSize(2));

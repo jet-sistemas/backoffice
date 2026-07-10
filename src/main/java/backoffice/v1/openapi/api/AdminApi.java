@@ -10,6 +10,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
+import backoffice.v1.dtos.checkin.ListAdminCheckinsQueryDTO;
 import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
 import backoffice.v1.dtos.billing.ListSubscriberBillingQueryDTO;
 import backoffice.v1.dtos.billing.ListSubscriberPaymentEventsQueryDTO;
@@ -17,6 +18,7 @@ import backoffice.v1.dtos.billing.SubscriberPaymentMarkPaidDTO;
 import backoffice.v1.dtos.user.ListUsersQueryDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorUpdateDTO;
+import backoffice.v1.openapi.dto.EnvelopeAdminCheckinListDTO;
 import backoffice.v1.openapi.dto.EnvelopeBenefitDTO;
 import backoffice.v1.openapi.dto.EnvelopeBenefitListDTO;
 import backoffice.v1.openapi.dto.EnvelopeErrorDTO;
@@ -171,6 +173,15 @@ public interface AdminApi {
 	})
 	Response listSubscriberPaymentEvents(@PathParam("id") Long id,
 			@Valid @BeanParam ListSubscriberPaymentEventsQueryDTO query);
+
+	@GET
+	@Path("/check-ins")
+	@Tag(name = "Admin - Check-ins")
+	@Operation(summary = "Listar check-ins globalmente", description = "Listagem paginada de todos os check-ins do sistema com filtros opcionais por patrocinador, membro, período e status de validação.")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Lista paginada de check-ins", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeAdminCheckinListDTO.class)))
+	})
+	Response listCheckins(@Valid @BeanParam ListAdminCheckinsQueryDTO query);
 
 	@GET
 	@Path("/subscribers/billing")

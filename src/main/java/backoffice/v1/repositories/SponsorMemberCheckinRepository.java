@@ -74,8 +74,30 @@ public class SponsorMemberCheckinRepository implements PanacheRepositoryBase<Spo
 
   public Pageable<SponsorMemberCheckin> listAll(
       Instant startInclusive, Instant endExclusive, PageDTO pageDTO) {
+    return listAllForAdmin(null, null, null, startInclusive, endExclusive, pageDTO);
+  }
+
+  public Pageable<SponsorMemberCheckin> listAllForAdmin(
+      Long sponsorId,
+      Long memberId,
+      Boolean validated,
+      Instant startInclusive,
+      Instant endExclusive,
+      PageDTO pageDTO) {
     var conditions = new StringBuilder("1=1");
     Map<String, Object> params = new HashMap<>();
+    if (sponsorId != null) {
+      conditions.append(" and sponsor.id = :sponsorId");
+      params.put("sponsorId", sponsorId);
+    }
+    if (memberId != null) {
+      conditions.append(" and member.id = :memberId");
+      params.put("memberId", memberId);
+    }
+    if (validated != null) {
+      conditions.append(" and validated = :validated");
+      params.put("validated", validated);
+    }
     appendDateRange(conditions, params, startInclusive, endExclusive);
     conditions.append(" order by createdAt desc");
     var query = find(conditions.toString(), params).page(pageDTO.getPagination());

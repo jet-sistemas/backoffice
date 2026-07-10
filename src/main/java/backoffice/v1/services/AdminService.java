@@ -15,6 +15,8 @@ import backoffice.v1.dtos.accountvalidation.ResendAccountValidationDTO;
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
+import backoffice.v1.dtos.checkin.AdminCheckinDTO;
+import backoffice.v1.dtos.checkin.ListAdminCheckinsQueryDTO;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.member.MemberDTO;
 import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
@@ -56,6 +58,9 @@ public class AdminService {
 
   @Inject
   private AccountValidationService accountValidationService;
+
+  @Inject
+  private SponsorCheckinService sponsorCheckinService;
 
   @Transactional
   public UserWithSponsorDTO createUser(UserWithSponsorCreateDTO dto, Long adminActorId) {
@@ -332,5 +337,15 @@ public class AdminService {
 
   public void deleteBenefit(Long benefitId) {
     benefitService.delete(benefitId);
+  }
+
+  public Pageable<AdminCheckinDTO> listCheckins(ListAdminCheckinsQueryDTO query) {
+    return sponsorCheckinService.listCheckinsForAdmin(
+        query.getSponsorId(),
+        query.getMemberUserId(),
+        query.getStartDate(),
+        query.getEndDate(),
+        query.getValidated(),
+        query.toPageDTO());
   }
 }

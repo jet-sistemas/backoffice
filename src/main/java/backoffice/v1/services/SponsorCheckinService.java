@@ -16,6 +16,7 @@ import backoffice.common.exceptions.customs.BusinessException;
 import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.mappers.SponsorCheckinMapper;
 import backoffice.common.utils.DocumentUtils;
+import backoffice.v1.dtos.checkin.AdminCheckinDTO;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.member.MemberCheckinHistoryDTO;
 import backoffice.v1.dtos.member.MemberCheckinSponsorOptionDTO;
@@ -47,6 +48,9 @@ public class SponsorCheckinService {
 
   @Inject
   private MemberService memberService;
+
+  @Inject
+  private SponsorService sponsorService;
 
   private ZoneId zone() {
     return ZoneId.of(zoneId);
@@ -112,6 +116,41 @@ public class SponsorCheckinService {
     Pageable<SponsorMemberCheckin> pageable = checkinRepository.listByMember(
         memberId, range.startInclusive(), range.endExclusive(), pageDTO);
     return SponsorCheckinMapper.fromEntityToPageableDTO(pageable);
+  }
+
+  public Pageable<AdminCheckinDTO> listCheckinsForAdmin(
+      Long sponsorId,
+      Long memberUserId,
+      LocalDate startDate,
+      LocalDate endDate,
+      Boolean validated,
+      PageDTO pageDTO) {
+    Long resolvedMemberId = null;
+    if (memberUserId != null) {
+      User user = userService.findById(memberUserId)
+          .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
+      if (user.getType() != UserTypeEnum.MEMBER) {
+        throw new BadRequestException(MessageErrorEnum.CHECKIN_USER_NOT_MEMBER.getMessage());
+      }
+      Member member = memberService.findByUserId(memberUserId)
+          .orElseThrow(() -> new NotFoundException(MessageErrorEnum.MEMBER_NOT_FOUND.getMessage()));
+      resolvedMemberId = member.getId();
+    }
+
+    if (sponsorId != null) {
+      sponsorService.findById(sponsorId)
+          .orElseThrow(() -> new NotFoundException(MessageErrorEnum.SPONSOR_NOT_FOUND.getMessage()));
+    }
+
+    InstantRange range = resolveHistoryRange(startDate, endDate);
+    Pageable<SponsorMemberCheckin> pageable = checkinRepository.listAllForAdmin(
+        sponsorId,
+        resolvedMemberId,
+        validated,
+        range.startInclusive(),
+        range.endExclusive(),
+        pageDTO);
+    return SponsorCheckinMapper.fromEntityToAdminCheckinPageableDTO(pageable);
   }
 
   public Pageable<SponsorCheckinDTO> listAll(LocalDate startDate, LocalDate endDate, PageDTO pageDTO) {

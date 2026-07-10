@@ -9,6 +9,7 @@ import backoffice.common.requests.ResponseModel;
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
+import backoffice.v1.dtos.checkin.ListAdminCheckinsQueryDTO;
 import backoffice.v1.dtos.billing.ListSubscriberBillingQueryDTO;
 import backoffice.v1.dtos.billing.ListSubscriberPaymentEventsQueryDTO;
 import backoffice.v1.dtos.billing.SubscriberPaymentEventDTO;
@@ -146,6 +147,13 @@ public class AdminResource implements AdminApi {
   @Override
   public Response listSubscriberBilling(ListSubscriberBillingQueryDTO query) {
     var result = service.listSubscriberBilling(query);
+    var response = ResponseModel.success(Status.OK.getStatusCode(), result);
+    return Response.ok(response).build();
+  }
+
+  @Override
+  public Response listCheckins(@Valid @BeanParam ListAdminCheckinsQueryDTO query) {
+    var result = service.listCheckins(query);
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
     return Response.ok(response).build();
   }
