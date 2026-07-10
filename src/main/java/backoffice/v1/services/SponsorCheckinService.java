@@ -3,6 +3,7 @@ package backoffice.v1.services;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -16,6 +17,8 @@ import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.mappers.SponsorCheckinMapper;
 import backoffice.common.utils.DocumentUtils;
 import backoffice.v1.dtos.common.PageDTO;
+import backoffice.v1.dtos.member.MemberCheckinHistoryDTO;
+import backoffice.v1.dtos.member.MemberCheckinSponsorOptionDTO;
 import backoffice.v1.dtos.sponsor.SponsorCheckinCreateDTO;
 import backoffice.v1.dtos.sponsor.SponsorCheckinDTO;
 import backoffice.v1.dtos.sponsor.SponsorMemberPreviewDTO;
@@ -116,6 +119,20 @@ public class SponsorCheckinService {
     Pageable<SponsorMemberCheckin> pageable = checkinRepository.listAll(
         range.startInclusive(), range.endExclusive(), pageDTO);
     return SponsorCheckinMapper.fromEntityToPageableDTO(pageable);
+  }
+
+  public Pageable<MemberCheckinHistoryDTO> listValidatedCheckinsForMember(
+      Long memberId, Long sponsorId, LocalDate startDate, LocalDate endDate, PageDTO pageDTO) {
+    InstantRange range = resolveHistoryRange(startDate, endDate);
+    Pageable<SponsorMemberCheckin> pageable = checkinRepository.listValidatedByMemberAndOptionalSponsor(
+        memberId, sponsorId, range.startInclusive(), range.endExclusive(), pageDTO);
+    return SponsorCheckinMapper.fromEntityToMemberHistoryPageableDTO(pageable);
+  }
+
+  public List<MemberCheckinSponsorOptionDTO> listSponsorsForMemberHistory(Long memberId) {
+    return checkinRepository.listDistinctSponsorsByMember(memberId).stream()
+        .map(SponsorCheckinMapper::fromSponsorToMemberCheckinSponsorOptionDTO)
+        .toList();
   }
 
   private ResolvedLookup resolveMember(String rawLookup) {

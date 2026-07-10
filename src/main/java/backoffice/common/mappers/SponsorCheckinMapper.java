@@ -5,10 +5,14 @@ import java.util.List;
 
 import backoffice.common.database.Pageable;
 import backoffice.common.utils.MaskUtils;
+import backoffice.v1.dtos.member.MemberCheckinHistoryDTO;
+import backoffice.v1.dtos.member.MemberCheckinHistorySponsorDTO;
+import backoffice.v1.dtos.member.MemberCheckinSponsorOptionDTO;
 import backoffice.v1.dtos.sponsor.SponsorCheckinDTO;
 import backoffice.v1.dtos.sponsor.SponsorCheckinMemberMinDTO;
 import backoffice.v1.dtos.sponsor.SponsorMemberPreviewDTO;
 import backoffice.v1.entities.Member;
+import backoffice.v1.entities.Sponsor;
 import backoffice.v1.entities.SponsorMemberCheckin;
 import backoffice.v1.entities.User;
 
@@ -72,6 +76,51 @@ public final class SponsorCheckinMapper {
         .totalPages(data.getTotalPages())
         .pageSize(data.getPageSize())
         .currentPage(data.getCurrentPage())
+        .build();
+  }
+
+  public static MemberCheckinHistoryDTO fromEntityToMemberHistoryDTO(SponsorMemberCheckin checkin) {
+    Sponsor sponsor = checkin.getSponsor();
+    return MemberCheckinHistoryDTO.builder()
+        .id(checkin.getId())
+        .checkedInAt(checkin.getCreatedAt())
+        .validated(checkin.isValidated())
+        .duplicateConfirmed(checkin.isDuplicateConfirmed())
+        .sponsor(fromSponsorToMemberHistorySponsorDTO(sponsor))
+        .build();
+  }
+
+  public static Pageable<MemberCheckinHistoryDTO> fromEntityToMemberHistoryPageableDTO(
+      Pageable<SponsorMemberCheckin> data) {
+    List<MemberCheckinHistoryDTO> dtos = data.getData().stream()
+        .map(SponsorCheckinMapper::fromEntityToMemberHistoryDTO)
+        .toList();
+
+    return Pageable.<MemberCheckinHistoryDTO>builder()
+        .data(dtos)
+        .totalElements(data.getTotalElements())
+        .totalPages(data.getTotalPages())
+        .pageSize(data.getPageSize())
+        .currentPage(data.getCurrentPage())
+        .build();
+  }
+
+  public static MemberCheckinHistorySponsorDTO fromSponsorToMemberHistorySponsorDTO(Sponsor sponsor) {
+    return MemberCheckinHistorySponsorDTO.builder()
+        .id(sponsor.getId())
+        .publicName(sponsor.getPublicName())
+        .logoUrl(sponsor.getLogoUrl())
+        .tier(sponsor.getTier() != null ? sponsor.getTier().name() : null)
+        .active(sponsor.isActive())
+        .build();
+  }
+
+  public static MemberCheckinSponsorOptionDTO fromSponsorToMemberCheckinSponsorOptionDTO(Sponsor sponsor) {
+    return MemberCheckinSponsorOptionDTO.builder()
+        .id(sponsor.getId())
+        .publicName(sponsor.getPublicName())
+        .logoUrl(sponsor.getLogoUrl())
+        .active(sponsor.isActive())
         .build();
   }
 }

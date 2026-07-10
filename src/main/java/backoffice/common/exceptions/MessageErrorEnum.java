@@ -81,7 +81,12 @@ public enum MessageErrorEnum {
   CHECKIN_ALREADY_TODAY("Check-in já realizado hoje para este membro."),
   CHECKIN_DUPLICATE_CONFIRMATION_REQUIRED(
       "Confirmação obrigatória para registrar novo check-in no mesmo dia."),
-  CHECKIN_HISTORY_PERIOD_INVALID("Período de histórico inválido.");
+  CHECKIN_HISTORY_PERIOD_INVALID("Período de histórico inválido."),
+
+  MEMBER_CARD_NOT_FOUND("Membro não encontrado para o usuário autenticado."),
+  MEMBER_CARD_USER_NOT_MEMBER("Usuário autenticado não é membro."),
+  MEMBER_CARD_ACCOUNT_INACTIVE("Carteirinha indisponível para conta inativa."),
+  MEMBER_CARD_INCONSISTENT_DATA("Dados cadastrais do membro inconsistentes.");
 
   public String message;
 

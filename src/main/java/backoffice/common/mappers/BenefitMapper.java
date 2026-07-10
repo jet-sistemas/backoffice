@@ -6,6 +6,8 @@ import backoffice.common.database.Pageable;
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
+import backoffice.v1.dtos.member.MemberBenefitDTO;
+import backoffice.v1.dtos.member.MemberBenefitSponsorDTO;
 import backoffice.v1.dtos.sponsor.SponsorMinDTO;
 import backoffice.v1.entities.Benefit;
 import backoffice.v1.entities.Sponsor;
@@ -40,6 +42,30 @@ public class BenefitMapper {
     benefit.setSponsor(sponsor);
   }
 
+  public static MemberBenefitDTO fromEntityToMemberBenefitDTO(Benefit benefit) {
+    return MemberBenefitDTO.builder()
+        .id(benefit.getId())
+        .name(benefit.getName())
+        .description(benefit.getDescription())
+        .address(benefit.getAddress())
+        .sponsor(benefit.getSponsor() != null ? toMemberBenefitSponsorDTO(benefit.getSponsor()) : null)
+        .build();
+  }
+
+  public static Pageable<MemberBenefitDTO> fromEntityToMemberBenefitPageableDTO(Pageable<Benefit> data) {
+    List<MemberBenefitDTO> dtos = data.getData().stream()
+        .map(BenefitMapper::fromEntityToMemberBenefitDTO)
+        .toList();
+
+    return Pageable.<MemberBenefitDTO>builder()
+        .data(dtos)
+        .totalElements(data.getTotalElements())
+        .totalPages(data.getTotalPages())
+        .pageSize(data.getPageSize())
+        .currentPage(data.getCurrentPage())
+        .build();
+  }
+
   public static Pageable<BenefitDTO> fromEntityToPageableDTO(Pageable<Benefit> data) {
     List<BenefitDTO> dtos = data.getData().stream()
         .map(BenefitMapper::fromEntityToDto)
@@ -51,6 +77,15 @@ public class BenefitMapper {
         .totalPages(data.getTotalPages())
         .pageSize(data.getPageSize())
         .currentPage(data.getCurrentPage())
+        .build();
+  }
+
+  private static MemberBenefitSponsorDTO toMemberBenefitSponsorDTO(Sponsor sponsor) {
+    return MemberBenefitSponsorDTO.builder()
+        .id(sponsor.getId())
+        .publicName(sponsor.getPublicName())
+        .tier(sponsor.getTier())
+        .logoUrl(sponsor.getLogoUrl())
         .build();
   }
 

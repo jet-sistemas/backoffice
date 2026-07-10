@@ -30,6 +30,28 @@ public class BenefitRepository implements PanacheRepositoryBase<Benefit, Long> {
     return new Pageable<>(query, pageDTO.getOneBasePage());
   }
 
+  public Pageable<Benefit> findActiveForMemberCatalog(Long sponsorId, PageDTO pageDTO) {
+    Map<String, Object> params = new HashMap<>();
+
+    if (sponsorId != null) {
+      params.put("sponsorId", sponsorId);
+      var query = find(
+          "isActive = true and sponsor.id = :sponsorId"
+              + " and sponsor.isActive = true and sponsor.user.isAccountActive = true"
+              + " order by name asc",
+          params)
+          .page(pageDTO.getPagination());
+      return new Pageable<>(query, pageDTO.getOneBasePage());
+    }
+
+    var query = find(
+        "isActive = true and (sponsor is null"
+            + " or (sponsor.isActive = true and sponsor.user.isAccountActive = true))"
+            + " order by case when sponsor is null then 0 else 1 end, sponsor.publicName, name")
+        .page(pageDTO.getPagination());
+    return new Pageable<>(query, pageDTO.getOneBasePage());
+  }
+
   public Pageable<Benefit> findAllPaginated(Long sponsorId, Boolean isActive, PageDTO pageDTO) {
     var conditions = new StringBuilder("1=1");
     Map<String, Object> params = new HashMap<>();

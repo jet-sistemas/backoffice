@@ -11,11 +11,16 @@ import backoffice.common.database.Pageable;
 import backoffice.common.exceptions.MessageErrorEnum;
 import backoffice.common.exceptions.customs.BadRequestException;
 import backoffice.common.exceptions.customs.ConflictException;
+import backoffice.common.exceptions.customs.ForbiddenException;
 import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.mappers.MemberMapper;
 import backoffice.common.utils.MemberBillingUtil;
 import backoffice.v1.dtos.billing.SubscriberMemberConfigSnapshot;
 import backoffice.v1.dtos.common.PageDTO;
+import backoffice.v1.dtos.member.MemberBenefitDTO;
+import backoffice.v1.dtos.member.MemberCardDTO;
+import backoffice.v1.dtos.member.MemberCheckinHistoryDTO;
+import backoffice.v1.dtos.member.MemberCheckinSponsorOptionDTO;
 import backoffice.v1.dtos.member.MemberDTO;
 import backoffice.v1.dtos.member.MemberDataCreateDTO;
 import backoffice.v1.dtos.member.MemberDataUpdateDTO;
@@ -53,6 +58,12 @@ public class MemberService {
 
   @Inject
   private MemberBillingService memberBillingService;
+
+  @Inject
+  private SponsorCheckinService sponsorCheckinService;
+
+  @Inject
+  private BenefitService benefitService;
 
   @Transactional
   public MemberDTO create(MemberDataCreateDTO dto, User user, Long adminActorId) {
@@ -248,6 +259,64 @@ public class MemberService {
 
   public Optional<Member> findByUserId(Long userId) {
     return memberRepository.findByUserId(userId);
+  }
+
+  public MemberCardDTO findCardByUserId(Long userId) {
+    User user = userService.findById(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
+
+    if (!UserTypeEnum.MEMBER.equals(user.getType())) {
+      throw new ForbiddenException(MessageErrorEnum.MEMBER_CARD_USER_NOT_MEMBER.getMessage());
+    }
+
+    if (!user.isAccountActive()) {
+      throw new ForbiddenException(MessageErrorEnum.MEMBER_CARD_ACCOUNT_INACTIVE.getMessage());
+    }
+
+    Member member = memberRepository.findByUserId(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.MEMBER_CARD_NOT_FOUND.getMessage()));
+
+    String resolvedName = member.getFullname() != null && !member.getFullname().isBlank()
+        ? member.getFullname()
+        : user.getName();
+    if (resolvedName == null || resolvedName.isBlank()) {
+      throw new BadRequestException(MessageErrorEnum.MEMBER_CARD_INCONSISTENT_DATA.getMessage());
+    }
+
+    return MemberMapper.fromEntityToCardDTO(member);
+  }
+
+  public Pageable<MemberCheckinHistoryDTO> listCheckinsByUserId(
+      Long userId, Long sponsorId, LocalDate startDate, LocalDate endDate, PageDTO pageDTO) {
+    Member member = requireActiveMember(userId);
+    return sponsorCheckinService.listValidatedCheckinsForMember(
+        member.getId(), sponsorId, startDate, endDate, pageDTO);
+  }
+
+  public List<MemberCheckinSponsorOptionDTO> listCheckinSponsorOptionsByUserId(Long userId) {
+    Member member = requireActiveMember(userId);
+    return sponsorCheckinService.listSponsorsForMemberHistory(member.getId());
+  }
+
+  public Pageable<MemberBenefitDTO> listBenefitsByUserId(Long userId, Long sponsorId, PageDTO pageDTO) {
+    requireActiveMember(userId);
+    return benefitService.listActiveForMemberCatalog(sponsorId, pageDTO);
+  }
+
+  private Member requireActiveMember(Long userId) {
+    User user = userService.findById(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
+
+    if (!UserTypeEnum.MEMBER.equals(user.getType())) {
+      throw new ForbiddenException(MessageErrorEnum.MEMBER_CARD_USER_NOT_MEMBER.getMessage());
+    }
+
+    if (!user.isAccountActive()) {
+      throw new ForbiddenException(MessageErrorEnum.MEMBER_CARD_ACCOUNT_INACTIVE.getMessage());
+    }
+
+    return memberRepository.findByUserId(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.MEMBER_CARD_NOT_FOUND.getMessage()));
   }
 
   public MemberDTO findDTOByUserId(Long userId) {
