@@ -1,7 +1,10 @@
 package backoffice.v1.entities;
 
+import backoffice.v1.entities.enums.CheckinLookupTypeEnum;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -32,4 +35,12 @@ public class SponsorMemberCheckin extends BaseEntity {
   private boolean validated = false;
 
   private String reason;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "lookup_type", length = 20)
+  private CheckinLookupTypeEnum lookupType;
+
+  @Builder.Default
+  @Column(name = "duplicate_confirmed", nullable = false, columnDefinition = "boolean default false")
+  private boolean duplicateConfirmed = false;
 }

@@ -7,6 +7,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import backoffice.common.database.Pageable;
+import backoffice.v1.dtos.member.MemberCardDTO;
 import backoffice.v1.dtos.member.MemberDTO;
 import backoffice.v1.dtos.member.MemberDataCreateDTO;
 import backoffice.v1.dtos.member.SponsoredMemberDTO;
@@ -24,6 +25,23 @@ public class MemberMapper {
         .fullname(dto.getFullname())
         .whatsapp(dto.getWhatsapp())
         .type(MemberTypeEnum.valueOf(dto.getType().toUpperCase()))
+        .build();
+  }
+
+  public static MemberCardDTO fromEntityToCardDTO(Member member) {
+    var user = member.getUser();
+    String name = member.getFullname() != null && !member.getFullname().isBlank()
+        ? member.getFullname()
+        : user.getName();
+    return MemberCardDTO.builder()
+        .id(member.getId())
+        .userId(user.getId())
+        .name(name)
+        .document(user.getDocument())
+        .code(user.getCode() != null ? user.getCode().toUpperCase() : null)
+        .avatarUrl(user.getAvatarUrl())
+        .memberType(member.getType())
+        .accountActive(user.isAccountActive())
         .build();
   }
 

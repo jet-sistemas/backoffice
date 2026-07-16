@@ -10,6 +10,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
+import backoffice.v1.dtos.checkin.ListAdminCheckinsQueryDTO;
 import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
 import backoffice.v1.dtos.billing.ListSubscriberBillingQueryDTO;
 import backoffice.v1.dtos.billing.ListSubscriberPaymentEventsQueryDTO;
@@ -17,12 +18,14 @@ import backoffice.v1.dtos.billing.SubscriberPaymentMarkPaidDTO;
 import backoffice.v1.dtos.user.ListUsersQueryDTO;
 import backoffice.v1.dtos.user.UserWithSponsorCreateDTO;
 import backoffice.v1.dtos.user.UserWithSponsorUpdateDTO;
+import backoffice.v1.openapi.dto.EnvelopeAdminCheckinListDTO;
 import backoffice.v1.openapi.dto.EnvelopeBenefitDTO;
 import backoffice.v1.openapi.dto.EnvelopeBenefitListDTO;
 import backoffice.v1.openapi.dto.EnvelopeErrorDTO;
 import backoffice.v1.openapi.dto.EnvelopeMemberDTO;
 import backoffice.v1.openapi.dto.EnvelopeSubscriberBillingListResultDTO;
 import backoffice.v1.openapi.dto.EnvelopeSubscriberPaymentEventListDTO;
+import backoffice.v1.openapi.dto.EnvelopeResendAccountValidationDTO;
 import backoffice.v1.openapi.dto.EnvelopeUserWithSponsorDTO;
 import backoffice.v1.openapi.dto.EnvelopeUserWithSponsorListDTO;
 import backoffice.v1.openapi.dto.EnvelopeVoid;
@@ -79,6 +82,15 @@ public interface AdminApi {
 			@APIResponse(responseCode = "201", description = "Usuário criado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeUserWithSponsorDTO.class)))
 	})
 	Response createUser(@Valid UserWithSponsorCreateDTO dto);
+
+	@POST
+	@Path("/user/{id}/resend-account-validation")
+	@Tag(name = "Admin - Usuários")
+	@Operation(summary = "Reenviar credenciais", description = "Reenvia convite expirado (conta não validada) ou nova senha temporária (conta validada com troca de senha pendente).")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Convite reenviado", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeResendAccountValidationDTO.class)))
+	})
+	Response resendAccountValidation(@PathParam("id") Long id);
 
 	@PUT
 	@Path("/user/{id}")
@@ -161,6 +173,15 @@ public interface AdminApi {
 	})
 	Response listSubscriberPaymentEvents(@PathParam("id") Long id,
 			@Valid @BeanParam ListSubscriberPaymentEventsQueryDTO query);
+
+	@GET
+	@Path("/check-ins")
+	@Tag(name = "Admin - Check-ins")
+	@Operation(summary = "Listar check-ins globalmente", description = "Listagem paginada de todos os check-ins do sistema com filtros opcionais por patrocinador, membro, período e status de validação.")
+	@APIResponses({
+			@APIResponse(responseCode = "200", description = "Lista paginada de check-ins", content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = EnvelopeAdminCheckinListDTO.class)))
+	})
+	Response listCheckins(@Valid @BeanParam ListAdminCheckinsQueryDTO query);
 
 	@GET
 	@Path("/subscribers/billing")

@@ -9,10 +9,14 @@ import backoffice.common.exceptions.customs.BadRequestException;
 import backoffice.common.exceptions.customs.BusinessException;
 import backoffice.common.exceptions.customs.NotFoundException;
 import backoffice.common.mappers.UserMapper;
+import backoffice.common.utils.PasswordPolicyService;
 import backoffice.common.utils.PasswordUtils;
+import backoffice.v1.dtos.accountvalidation.ResendAccountValidationDTO;
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
+import backoffice.v1.dtos.checkin.AdminCheckinDTO;
+import backoffice.v1.dtos.checkin.ListAdminCheckinsQueryDTO;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.member.MemberDTO;
 import backoffice.v1.dtos.member.SubscriberMemberUpdateDTO;
@@ -52,6 +56,12 @@ public class AdminService {
   @Inject
   private MemberBillingService memberBillingService;
 
+  @Inject
+  private AccountValidationService accountValidationService;
+
+  @Inject
+  private SponsorCheckinService sponsorCheckinService;
+
   @Transactional
   public UserWithSponsorDTO createUser(UserWithSponsorCreateDTO dto, Long adminActorId) {
     UserCreateDTO userData = dto.getUser();
@@ -60,11 +70,31 @@ public class AdminService {
     validateTypeRequirements(type, dto);
 
     userService.validateUniqueFields(userData.getEmail(), userData.getDocument(), userData.getCode());
-
-    userData.setPassword(PasswordUtils.hashPass("temp@1234"));
     userData.setType(type.name());
 
+    User adminActor = adminActorId != null
+        ? userService.findById(adminActorId).orElse(null)
+        : null;
+
+    String temporaryPassword;
+    if (type == UserTypeEnum.ADM) {
+      temporaryPassword = PasswordPolicyService.generateTemporaryPassword();
+      userData.setPassword(PasswordUtils.hashPass(temporaryPassword));
+      User user = userService.create(userData);
+      user.setAccountActive(true);
+      user.setMustChangePassword(false);
+      userService.persistAndFlush(user);
+      return UserMapper.fromEntityToUserWithSponsorDTO(user, null, null,
+          accountValidationService.resolveStatus(user), false, false);
+    }
+
+    temporaryPassword = PasswordPolicyService.generateTemporaryPassword();
+    userData.setPassword(PasswordUtils.hashPass(temporaryPassword));
+
     User user = userService.create(userData);
+    user.setAccountActive(false);
+    user.setMustChangePassword(false);
+    userService.persistAndFlush(user);
 
     Sponsor sponsor = null;
     if (isSponsorType(type)) {
@@ -74,12 +104,14 @@ public class AdminService {
       memberService.create(dto.getMember(), user, adminActorId);
     }
 
+    accountValidationService.createInviteAndSendEmail(user, adminActor, temporaryPassword);
+
     MemberDTO memberDto = null;
     if (UserTypeEnum.MEMBER.equals(type)) {
       memberDto = memberService.findDTOByUserId(user.getId());
     }
 
-    return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor, memberDto);
+    return mapUserWithValidationFlags(user, sponsor, memberDto);
   }
 
   @Transactional
@@ -111,7 +143,21 @@ public class AdminService {
       memberDto = memberService.findDTOByUserId(userId);
     }
 
-    return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor, memberDto);
+    return mapUserWithValidationFlags(user, sponsor, memberDto);
+  }
+
+  @Transactional
+  public ResendAccountValidationDTO resendAccountValidation(Long userId, Long adminActorId) {
+    User user = userService.findById(userId)
+        .orElseThrow(() -> new NotFoundException(MessageErrorEnum.USER_NOT_FOUND.getMessage()));
+
+    if (user.getEmailVerifiedAt() == null) {
+      return accountValidationService.resendInvite(userId, adminActorId);
+    }
+    if (user.isMustChangePassword()) {
+      return accountValidationService.resendTemporaryPassword(userId, adminActorId);
+    }
+    throw new BadRequestException(MessageErrorEnum.ACCOUNT_VALIDATION_RESEND_NOT_APPLICABLE.getMessage());
   }
 
   @Transactional
@@ -167,7 +213,7 @@ public class AdminService {
           MemberDTO member = UserTypeEnum.MEMBER.equals(user.getType())
               ? memberService.findDTOByUserId(userId)
               : null;
-          return UserMapper.fromEntityToUserWithSponsorDTO(user, sponsor, member);
+          return mapUserWithValidationFlags(user, sponsor, member);
         })
         .orElse(null);
   }
@@ -196,7 +242,20 @@ public class AdminService {
         .toList();
     Map<Long, MemberDTO> membersByUserId = memberService.findDTOsByUserIds(memberUserIds);
 
-    return UserMapper.fromEntityToPageableDTO(pageable, sponsorsByUserId, membersByUserId);
+    List<UserWithSponsorDTO> dtos = pageable.getData().stream()
+        .map(user -> mapUserWithValidationFlags(
+            user,
+            sponsorsByUserId.get(user.getId()),
+            membersByUserId.get(user.getId())))
+        .toList();
+
+    return Pageable.<UserWithSponsorDTO>builder()
+        .data(dtos)
+        .totalElements(pageable.getTotalElements())
+        .totalPages(pageable.getTotalPages())
+        .pageSize(pageable.getPageSize())
+        .currentPage(pageable.getCurrentPage())
+        .build();
   }
 
   @Transactional
@@ -242,6 +301,16 @@ public class AdminService {
     return UserTypeEnum.SPONSOR.equals(type) || UserTypeEnum.SPONSOR_MEMBER.equals(type);
   }
 
+  private UserWithSponsorDTO mapUserWithValidationFlags(User user, Sponsor sponsor, MemberDTO member) {
+    return UserMapper.fromEntityToUserWithSponsorDTO(
+        user,
+        sponsor,
+        member,
+        accountValidationService.resolveStatus(user),
+        accountValidationService.canResendInvite(user),
+        accountValidationService.canResendTemporaryPassword(user));
+  }
+
   public BenefitDTO createBenefit(BenefitCreateDTO dto) {
     return benefitService.create(dto);
   }
@@ -268,5 +337,15 @@ public class AdminService {
 
   public void deleteBenefit(Long benefitId) {
     benefitService.delete(benefitId);
+  }
+
+  public Pageable<AdminCheckinDTO> listCheckins(ListAdminCheckinsQueryDTO query) {
+    return sponsorCheckinService.listCheckinsForAdmin(
+        query.getSponsorId(),
+        query.getMemberUserId(),
+        query.getStartDate(),
+        query.getEndDate(),
+        query.getValidated(),
+        query.toPageDTO());
   }
 }

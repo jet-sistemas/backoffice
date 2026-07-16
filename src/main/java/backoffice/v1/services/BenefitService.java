@@ -8,6 +8,7 @@ import backoffice.common.mappers.BenefitMapper;
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
 import backoffice.v1.dtos.benefit.BenefitDTO;
 import backoffice.v1.dtos.benefit.BenefitUpdateDTO;
+import backoffice.v1.dtos.member.MemberBenefitDTO;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.entities.Benefit;
 import backoffice.v1.entities.Sponsor;
@@ -55,6 +56,16 @@ public class BenefitService {
   public Pageable<BenefitDTO> list(Long sponsorId, Boolean isActive, PageDTO pageDTO) {
     Pageable<Benefit> pageable = benefitRepository.findAllPaginated(sponsorId, isActive, pageDTO);
     return BenefitMapper.fromEntityToPageableDTO(pageable);
+  }
+
+  public Pageable<BenefitDTO> listActiveBySponsorId(Long sponsorId, PageDTO pageDTO) {
+    Pageable<Benefit> pageable = benefitRepository.findActiveBySponsorId(sponsorId, pageDTO);
+    return BenefitMapper.fromEntityToPageableDTO(pageable);
+  }
+
+  public Pageable<MemberBenefitDTO> listActiveForMemberCatalog(Long sponsorId, PageDTO pageDTO) {
+    Pageable<Benefit> pageable = benefitRepository.findActiveForMemberCatalog(sponsorId, pageDTO);
+    return BenefitMapper.fromEntityToMemberBenefitPageableDTO(pageable);
   }
 
   @Transactional

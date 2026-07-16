@@ -4,6 +4,7 @@ import backoffice.common.requests.ResponseModel;
 import backoffice.v1.dtos.auth.AuthCreateDTO;
 import backoffice.v1.dtos.auth.AuthDTO;
 import backoffice.v1.dtos.auth.AuthExtDTO;
+import backoffice.v1.dtos.auth.ChangePasswordRequestDTO;
 import backoffice.v1.openapi.api.AuthApi;
 import backoffice.v1.services.AuthService;
 import jakarta.inject.Inject;
@@ -25,6 +26,13 @@ public class AuthResource implements AuthApi {
   @Override
   public Response me(@Context SecurityContext ctx) {
     AuthExtDTO result = service.me(ctx.getUserPrincipal().getName());
+    var response = ResponseModel.success(Response.Status.OK.getStatusCode(), result);
+    return Response.ok(response).build();
+  }
+
+  @Override
+  public Response changePassword(ChangePasswordRequestDTO dto, @Context SecurityContext ctx) {
+    AuthExtDTO result = service.changePassword(ctx.getUserPrincipal().getName(), dto);
     var response = ResponseModel.success(Response.Status.OK.getStatusCode(), result);
     return Response.ok(response).build();
   }
