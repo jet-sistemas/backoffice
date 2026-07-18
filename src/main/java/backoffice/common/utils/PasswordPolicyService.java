@@ -8,7 +8,6 @@ import backoffice.common.exceptions.customs.BadRequestException;
 
 public final class PasswordPolicyService {
 
-  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
   private static final String UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   private static final String LOWER = "abcdefghijklmnopqrstuvwxyz";
   private static final String DIGITS = "0123456789";
@@ -17,7 +16,19 @@ public final class PasswordPolicyService {
   private static final int TEMP_PASSWORD_LENGTH = 12;
   private static final int MIN_DEFINITIVE_LENGTH = 8;
 
+  // Lazy: SecureRandom no static <clinit> quebra GraalVM native (seed no image heap)
+  private static volatile SecureRandom secureRandom;
+
   private PasswordPolicyService() {
+  }
+
+  private static SecureRandom secureRandom() {
+    SecureRandom random = secureRandom;
+    if (random == null) {
+      random = new SecureRandom();
+      secureRandom = random;
+    }
+    return random;
   }
 
   public static String generateTemporaryPassword() {
@@ -37,14 +48,14 @@ public final class PasswordPolicyService {
     final String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     char[] code = new char[5];
     for (int i = 0; i < 5; i++) {
-      code[i] = alphabet.charAt(SECURE_RANDOM.nextInt(alphabet.length()));
+      code[i] = alphabet.charAt(secureRandom().nextInt(alphabet.length()));
     }
     return new String(code);
   }
 
   public static String generateLinkToken() {
     byte[] bytes = new byte[32];
-    SECURE_RANDOM.nextBytes(bytes);
+    secureRandom().nextBytes(bytes);
     return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
   }
 
@@ -73,12 +84,13 @@ public final class PasswordPolicyService {
   }
 
   private static char pick(String alphabet) {
-    return alphabet.charAt(SECURE_RANDOM.nextInt(alphabet.length()));
+    return alphabet.charAt(secureRandom().nextInt(alphabet.length()));
   }
 
   private static void shuffle(char[] array) {
+    SecureRandom random = secureRandom();
     for (int i = array.length - 1; i > 0; i--) {
-      int j = SECURE_RANDOM.nextInt(i + 1);
+      int j = random.nextInt(i + 1);
       char tmp = array[i];
       array[i] = array[j];
       array[j] = tmp;
