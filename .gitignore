@@ -45,3 +45,5 @@ native-local.env
 /.quarkus/cli/plugins/
 # TLS Certificates
 .certs/
+
+native-local.env

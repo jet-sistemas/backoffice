@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="x-apple-disable-message-reformatting" />
+<title>Valide sua conta Jet</title>
+<style>
+  @media only screen and (max-width: 600px) {
+    .email-container { width: 100% !important; }
+    .stack-cell { padding-left: 20px !important; padding-right: 20px !important; }
+    .cta-button { width: 100% !important; }
+  }
+</style>
+</head>
+<body style="margin:0; padding:0; background-color:#f7f8fa; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <!-- Preheader (oculto, aparece na prévia da caixa de entrada) -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
+    Confirme seu cadastro na Jet e ative sua conta em poucos passos.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f7f8fa; padding:32px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" class="email-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background-color:#ffffff; border-radius:12px; overflow:hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="background-color:#050469; padding:32px 24px;">
+              <img src="${logoUrl}" alt="Jet" width="72" height="72" style="display:block; border-radius:14px;" />
+            </td>
+          </tr>
+
+          <!-- Barra decorativa -->
+          <tr>
+            <td style="line-height:0; font-size:0;">
+              <div style="height:4px; background-image:linear-gradient(90deg, #f3f106, #ed342f, #090bce); background-color:#ed342f;"></div>
+            </td>
+          </tr>
+
+          <!-- Corpo -->
+          <tr>
+            <td class="stack-cell" style="padding:40px 40px 8px 40px;">
+              <p style="margin:0 0 16px 0; font-size:22px; line-height:28px; font-weight:700; color:#050469;">
+                Olá, ${userName}!
+              </p>
+              <p style="margin:0 0 28px 0; font-size:15px; line-height:24px; color:#3a3a4a;">
+                Sua conta no <strong>Jet Backoffice</strong> foi criada. Para ativá-la, clique no botão abaixo e informe o código de validação junto com seu documento cadastrado.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Botão CTA -->
+          <tr>
+            <td class="stack-cell" align="center" style="padding:0 40px 12px 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center" bgcolor="#050469" style="border-radius:8px;">
+                    <a href="${validationUrl}" target="_blank" rel="noopener noreferrer" class="cta-button"
+                      style="display:inline-block; padding:16px 40px; font-size:16px; font-weight:700; color:#ffffff; text-decoration:none; border-radius:8px; background-color:#050469;">
+                      Validar minha conta &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Link alternativo -->
+          <tr>
+            <td class="stack-cell" align="center" style="padding:0 40px 28px 40px;">
+              <p style="margin:0; font-size:12px; line-height:18px; color:#8a8a9a;">
+                O botão não funcionou? Copie e cole este link no navegador:<br />
+                <a href="${validationUrl}" target="_blank" rel="noopener noreferrer" style="color:#090bce; word-break:break-all;">${validationUrl}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Código + Senha -->
+          <tr>
+            <td class="stack-cell" style="padding:0 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding-bottom:14px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f7f8fa; border:1px dashed #050469; border-radius:8px;">
+                      <tr>
+                        <td align="center" style="padding:16px;">
+                          <p style="margin:0 0 6px 0; font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#8a8a9a;">
+                            Código de validação
+                          </p>
+                          <p style="margin:0; font-family:'Courier New', Courier, monospace; font-size:26px; font-weight:700; letter-spacing:0.3em; color:#050469;">
+                            ${validationCode}
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#fffdeb; border:1px dashed #f3f106; border-radius:8px;">
+                      <tr>
+                        <td align="center" style="padding:16px;">
+                          <p style="margin:0 0 6px 0; font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#8a8a9a;">
+                            Senha temporária
+                          </p>
+                          <p style="margin:0; font-family:'Courier New', Courier, monospace; font-size:22px; font-weight:700; letter-spacing:0.12em; color:#050469;">
+                            ${temporaryPassword}
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:12px 0 0 0; font-size:12px; line-height:18px; color:#8a8a9a; text-align:center;">
+                Toque e mantenha pressionado (ou selecione com o mouse) para copiar cada valor.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Avisos -->
+          <tr>
+            <td class="stack-cell" style="padding:28px 40px 0 40px;">
+              <p style="margin:0 0 8px 0; font-size:14px; line-height:22px; color:#3a3a4a;">
+                Este convite expira em <strong style="color:#050469;">${expiresAt}</strong>.
+              </p>
+              <p style="margin:0 0 8px 0; font-size:14px; line-height:22px; color:#3a3a4a;">
+                No primeiro acesso após a validação, você deverá trocar a senha temporária.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="stack-cell" style="padding:8px 40px 40px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f7f8fa; border-radius:8px;">
+                <tr>
+                  <td style="padding:14px 16px; font-size:12px; line-height:18px; color:#8a8a9a;">
+                    Se você não reconhece este cadastro, ignore este e-mail.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#050469; padding:32px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="padding-bottom:16px;">
+                    <img src="${fenixUrl}" alt="" width="28" height="28" style="display:block; opacity:0.85;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-bottom:14px; font-size:12px; line-height:20px; color:rgba(255,255,255,0.75);">
+                    <a href="mailto:associacaojet@gmail.com" style="color:rgba(255,255,255,0.85); text-decoration:none;">associacaojet@gmail.com</a>
+                    &nbsp;&bull;&nbsp;
+                    <a href="https://wa.me/5589994659400" target="_blank" rel="noopener noreferrer" style="color:rgba(255,255,255,0.85); text-decoration:none;">(89) 9 9465-9400</a>
+                    &nbsp;&bull;&nbsp;
+                    <a href="https://instagram.com/associacaojet" target="_blank" rel="noopener noreferrer" style="color:rgba(255,255,255,0.85); text-decoration:none;">@associacaojet</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="font-size:11px; line-height:18px; color:rgba(255,255,255,0.5);">
+                    Sul do Piauí, Brasil<br />
+                    &copy; ${year} Associação Desportiva, Artística e Cultural J&amp;T. Todos os direitos reservados.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

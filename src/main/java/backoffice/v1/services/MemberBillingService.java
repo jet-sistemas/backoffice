@@ -14,10 +14,13 @@ import backoffice.common.exceptions.MessageErrorEnum;
 import backoffice.common.exceptions.customs.BadRequestException;
 import backoffice.common.exceptions.customs.ConflictException;
 import backoffice.common.exceptions.customs.NotFoundException;
+import backoffice.common.mappers.MemberMapper;
 import backoffice.common.mappers.SubscriberBillingMapper;
 import backoffice.common.utils.MemberBillingRules;
 import backoffice.common.utils.MemberBillingUtil;
 import backoffice.v1.dtos.member.SubscriberMemberDTO;
+import backoffice.v1.dtos.member.MemberAccountStatusDTO;
+import backoffice.v1.dtos.member.MemberPaymentHistoryDTO;
 import backoffice.v1.dtos.billing.ListSubscriberBillingQueryDTO;
 import backoffice.v1.dtos.billing.SubscriberBillingListResultDTO;
 import backoffice.v1.dtos.billing.SubscriberBillingSummaryDTO;
@@ -116,6 +119,12 @@ public class MemberBillingService {
     if (sub.getStatus() == MemberStatusEnum.INACTIVE) {
       return;
     }
+    LocalDate today = LocalDate.now(billingZone());
+    sub.setStatus(MemberBillingRules.expectedAutomationStatus(today, dueSoonDays, sub.getNextDueDate()));
+  }
+
+  /** Recalcula status automático ao reativar membro (sai de {@link MemberStatusEnum#INACTIVE}). */
+  public void restoreSubscriberStatusOnMemberActivation(SubscriberMember sub) {
     LocalDate today = LocalDate.now(billingZone());
     sub.setStatus(MemberBillingRules.expectedAutomationStatus(today, dueSoonDays, sub.getNextDueDate()));
   }
@@ -219,16 +228,33 @@ public class MemberBillingService {
   }
 
   public Pageable<SubscriberPaymentEventDTO> listPaymentEventsByUserId(Long userId, PageDTO pageDTO) {
+    SubscriberMember sub = requireSubscriberMemberByUserId(userId);
+    var page = subscriberPaymentEventRepository.findBySubscriberMemberId(sub.getId(), pageDTO);
+    return SubscriberBillingMapper.fromPaymentEventPageable(page);
+  }
+
+  public MemberAccountStatusDTO findAccountStatusByUserId(Long userId) {
+    SubscriberMember sub = requireSubscriberMemberByUserId(userId);
+    LocalDate today = LocalDate.now(billingZone());
+    return MemberMapper.fromSubscriberToAccountStatus(sub, dueSoonDays, today);
+  }
+
+  public Pageable<MemberPaymentHistoryDTO> listPaymentHistoryByUserId(Long userId, PageDTO pageDTO) {
+    SubscriberMember sub = requireSubscriberMemberByUserId(userId);
+    var page = subscriberPaymentEventRepository.findBySubscriberMemberIdAndEventType(
+        sub.getId(), SubscriberPaymentEventTypeEnum.PAYMENT_MARKED_PAID, pageDTO);
+    return MemberMapper.fromPaymentHistoryPageable(page);
+  }
+
+  private SubscriberMember requireSubscriberMemberByUserId(Long userId) {
     Member member = memberRepository.findByUserId(userId)
         .orElseThrow(() -> new NotFoundException(MessageErrorEnum.MEMBER_NOT_FOUND.getMessage()));
     validateMemberUser(member);
     if (!MemberTypeEnum.SUBSCRIBER.equals(member.getType())) {
-      throw new BadRequestException(MessageErrorEnum.MEMBER_SUBSCRIBER_UPDATE_INVALID.getMessage());
+      throw new BadRequestException(MessageErrorEnum.MEMBER_NOT_SUBSCRIBED.getMessage());
     }
-    SubscriberMember sub = subscriberMemberRepository.findByMemberId(member.getId())
+    return subscriberMemberRepository.findByMemberId(member.getId())
         .orElseThrow(() -> new NotFoundException(MessageErrorEnum.MEMBER_SUBSCRIBER_NOT_FOUND.getMessage()));
-    var page = subscriberPaymentEventRepository.findBySubscriberMemberId(sub.getId(), pageDTO);
-    return SubscriberBillingMapper.fromPaymentEventPageable(page);
   }
 
   public SubscriberBillingListResultDTO listSubscriberBilling(ListSubscriberBillingQueryDTO query) {

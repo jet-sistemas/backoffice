@@ -32,8 +32,10 @@ public enum MessageErrorEnum {
       "Membros assinantes não devem enviar bloco de patrocínio (sponsored); use apenas subscriber."),
   MEMBER_SPONSORED_EXTRA_INVALID(
       "Membros patrocinados não devem enviar bloco de mensalidade (subscriber); use apenas sponsored."),
+  MEMBER_SPONSORED_ACTOR_REQUIRED(
+      "Não foi possível identificar o administrador autenticado para conceder o patrocínio."),
   MEMBER_SPONSORED_GRANT_INVALID(
-      "O usuário concedente deve existir, ser patrocinador (SPONSOR ou SPONSOR_MEMBER) e possuir registro de patrocinador ativo."),
+      "O usuário concedente deve existir e ser administrador (ADM)."),
   MEMBER_SUBSCRIBER_NOT_FOUND("Este membro não possui cadastro de assinante."),
   MEMBER_SUBSCRIBER_UPDATE_INVALID("Não é possível atualizar mensalidade: membro não é assinante."),
   SUBSCRIBER_PAYMENT_ALREADY_REGISTERED("Pagamento deste ciclo já registrado."),
@@ -54,7 +56,37 @@ public enum MessageErrorEnum {
   UPLOAD_OBJECT_NOT_FOUND("Objeto não encontrado no armazenamento."),
   UPLOAD_KEY_INVALID("A chave do objeto não é válida para esta entidade."),
   UPLOAD_KEY_MISMATCH("A chave informada não corresponde à imagem atual desta entidade."),
-  UPLOAD_RATE_LIMIT("Limite de solicitações de upload excedido. Tente novamente em instantes.");
+  UPLOAD_RATE_LIMIT("Limite de solicitações de upload excedido. Tente novamente em instantes."),
+
+  ACCOUNT_VALIDATION_CODE_INVALID("Código de validação inválido."),
+  ACCOUNT_VALIDATION_CODE_EXPIRED("Código de validação expirado."),
+  ACCOUNT_VALIDATION_INVITE_NOT_FOUND("Convite de validação não encontrado."),
+  ACCOUNT_VALIDATION_INVITE_ALREADY_USED("Convite de validação já utilizado."),
+  ACCOUNT_VALIDATION_INVITE_LOCKED("Convite bloqueado por excesso de tentativas. Solicite reenvio ao administrador."),
+  ACCOUNT_ALREADY_VALIDATED("Conta já validada."),
+  ACCOUNT_VALIDATION_DOCUMENT_MISMATCH("Documento não confere com o cadastro."),
+  PASSWORD_CHANGE_REQUIRED("Troca de senha obrigatória antes de continuar."),
+  PASSWORD_CURRENT_INVALID("Senha atual inválida."),
+  PASSWORD_POLICY_NOT_MET("Nova senha não atende à política de segurança."),
+  PASSWORD_SAME_AS_CURRENT("Nova senha não pode ser igual à senha atual."),
+  PASSWORD_CONFIRMATION_MISMATCH("Confirmação de senha não confere com a nova senha."),
+  EMAIL_SEND_FAILED("Falha ao enviar e-mail de validação."),
+  ACCOUNT_VALIDATION_RESEND_NOT_EXPIRED("Reenvio permitido apenas após expiração do convite atual."),
+  ACCOUNT_VALIDATION_RESEND_NOT_APPLICABLE("Não há credenciais elegíveis para reenvio neste momento."),
+  ACCOUNT_TEMPORARY_PASSWORD_RESEND_NOT_ALLOWED("Reenvio de senha temporária não permitido para esta conta."),
+
+  CHECKIN_LOOKUP_INVALID("Identificador de membro inválido. Informe um código de 5 caracteres ou um CPF."),
+  CHECKIN_USER_NOT_MEMBER("O usuário encontrado não é um membro."),
+  CHECKIN_MEMBER_NOT_ELIGIBLE("Membro não apto para check-in."),
+  CHECKIN_ALREADY_TODAY("Check-in já realizado hoje para este membro."),
+  CHECKIN_DUPLICATE_CONFIRMATION_REQUIRED(
+      "Confirmação obrigatória para registrar novo check-in no mesmo dia."),
+  CHECKIN_HISTORY_PERIOD_INVALID("Período de histórico inválido."),
+
+  MEMBER_CARD_NOT_FOUND("Membro não encontrado para o usuário autenticado."),
+  MEMBER_CARD_USER_NOT_MEMBER("Usuário autenticado não é membro."),
+  MEMBER_CARD_ACCOUNT_INACTIVE("Carteirinha indisponível para conta inativa."),
+  MEMBER_CARD_INCONSISTENT_DATA("Dados cadastrais do membro inconsistentes.");
 
   public String message;
 

@@ -14,6 +14,8 @@ public class AuthMapper {
         .type(user.getType())
         .createdAt(user.getCreatedAt())
         .isAccountActive(user.isAccountActive())
+        .mustChangePassword(user.isMustChangePassword())
+        .emailVerifiedAt(user.getEmailVerifiedAt())
         .build();
 
     return authExtBuild;

@@ -13,9 +13,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class SponsoredDataCreateDTO {
-  @NotNull(message = "O usuário patrocinador concedente é obrigatório.")
-  private Long grantedByUserId;
-
   @NotNull(message = "A data de início do patrocínio é obrigatória.")
   private LocalDate startAt;
 

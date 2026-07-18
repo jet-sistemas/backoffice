@@ -1,5 +1,7 @@
 package backoffice.v1.entities;
 
+import java.time.Instant;
+
 import backoffice.v1.entities.enums.UserTypeEnum;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -23,7 +25,7 @@ public class User extends BaseEntity {
   @Column(nullable = false, unique = true)
   private String email;
 
-  @Column(nullable = false)
+  @Column(nullable = false, length = 255)
   private String password;
 
   @Column(nullable = false)
@@ -38,6 +40,16 @@ public class User extends BaseEntity {
   @Column(columnDefinition = "boolean default false")
   @Builder.Default
   private boolean isAccountActive = false;
+
+  @Column(name = "email_verified_at")
+  private Instant emailVerifiedAt;
+
+  @Builder.Default
+  @Column(name = "must_change_password", nullable = false, columnDefinition = "boolean default false")
+  private boolean mustChangePassword = false;
+
+  @Column(name = "password_changed_at")
+  private Instant passwordChangedAt;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)

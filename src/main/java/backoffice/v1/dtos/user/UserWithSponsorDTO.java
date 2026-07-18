@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 import backoffice.v1.dtos.member.MemberDTO;
 import backoffice.v1.dtos.sponsor.SponsorDTO;
+import backoffice.v1.entities.enums.AccountValidationStatusEnum;
 import backoffice.v1.entities.enums.UserTypeEnum;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,6 +28,11 @@ public class UserWithSponsorDTO {
   private UserTypeEnum type;
   private String avatarUrl;
   private Instant createdAt;
+  private Instant emailVerifiedAt;
+  private boolean mustChangePassword;
+  private AccountValidationStatusEnum accountValidationStatus;
+  private boolean canResendInvite;
+  private boolean canResendTemporaryPassword;
 
   @JsonInclude(Include.NON_NULL)
   private SponsorDTO sponsor;
