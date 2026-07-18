@@ -1,5 +1,6 @@
 package backoffice.common.mappers;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,15 +8,20 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import backoffice.common.database.Pageable;
+import backoffice.common.utils.MemberBillingRules;
+import backoffice.v1.dtos.member.MemberAccountStatusDTO;
 import backoffice.v1.dtos.member.MemberCardDTO;
 import backoffice.v1.dtos.member.MemberDTO;
 import backoffice.v1.dtos.member.MemberDataCreateDTO;
+import backoffice.v1.dtos.member.MemberPaymentHistoryDTO;
 import backoffice.v1.dtos.member.SponsoredMemberDTO;
 import backoffice.v1.dtos.member.SubscriberMemberDTO;
 import backoffice.v1.entities.Member;
 import backoffice.v1.entities.SponsoredMember;
 import backoffice.v1.entities.SubscriberMember;
+import backoffice.v1.entities.SubscriberPaymentEvent;
 import backoffice.v1.entities.User;
+import backoffice.v1.entities.enums.MemberStatusEnum;
 import backoffice.v1.entities.enums.MemberTypeEnum;
 
 public class MemberMapper {
@@ -147,5 +153,42 @@ public class MemberMapper {
     return list.stream()
         .collect(Collectors.toMap(s -> s.getMember().getId(), Function.identity(),
             (a, b) -> a, HashMap::new));
+  }
+
+  public static MemberAccountStatusDTO fromSubscriberToAccountStatus(
+      SubscriberMember sub, int dueSoonDays, LocalDate today) {
+    MemberStatusEnum effective = MemberBillingRules.resolveEffectiveStatus(
+        sub.getStatus(), today, dueSoonDays, sub.getNextDueDate());
+    return MemberAccountStatusDTO.builder()
+        .status(effective)
+        .nextDueDate(sub.getNextDueDate())
+        .lastPaidAt(sub.getLastPaidAt())
+        .monthlyFeeAmount(sub.getMonthlyFeeAmount())
+        .billingDay(sub.getBillingDay())
+        .build();
+  }
+
+  public static MemberPaymentHistoryDTO fromPaymentEventToMemberHistory(SubscriberPaymentEvent event) {
+    return MemberPaymentHistoryDTO.builder()
+        .id(event.getId())
+        .conferenceAt(event.getCreatedAt())
+        .adminName(event.getAdminUser() != null ? event.getAdminUser().getName() : null)
+        .amount(event.getAmount())
+        .note(event.getNote())
+        .build();
+  }
+
+  public static Pageable<MemberPaymentHistoryDTO> fromPaymentHistoryPageable(
+      Pageable<SubscriberPaymentEvent> pageable) {
+    List<MemberPaymentHistoryDTO> dtos = pageable.getData().stream()
+        .map(MemberMapper::fromPaymentEventToMemberHistory)
+        .toList();
+    return Pageable.<MemberPaymentHistoryDTO>builder()
+        .data(dtos)
+        .totalElements(pageable.getTotalElements())
+        .totalPages(pageable.getTotalPages())
+        .pageSize(pageable.getPageSize())
+        .currentPage(pageable.getCurrentPage())
+        .build();
   }
 }

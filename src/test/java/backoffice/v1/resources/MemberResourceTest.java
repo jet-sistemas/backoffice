@@ -5,11 +5,14 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 
 import backoffice.common.utils.TokenUtils;
 import backoffice.v1.dtos.benefit.BenefitCreateDTO;
+import backoffice.v1.dtos.billing.SubscriberPaymentMarkPaidDTO;
 import backoffice.v1.dtos.member.MemberDataCreateDTO;
+import backoffice.v1.dtos.member.SponsoredDataCreateDTO;
 import backoffice.v1.dtos.member.SubscriberDataCreateDTO;
 import backoffice.v1.dtos.sponsor.SponsorDataCreateDTO;
 import backoffice.v1.dtos.user.UserCreateDTO;
@@ -37,6 +40,8 @@ class MemberResourceTest {
   private static final String CHECKINS_PATH = "/v1/member/checkins";
   private static final String SPONSORS_PATH = "/v1/member/checkins/sponsors";
   private static final String BENEFITS_PATH = "/v1/member/benefits";
+  private static final String ACCOUNT_PATH = "/v1/member/me/account";
+  private static final String ACCOUNT_PAYMENTS_PATH = "/v1/member/me/account/payments";
   private static final String SPONSOR_CHECKINS_PATH = "/v1/sponsor/checkins";
 
   @Inject
@@ -96,6 +101,69 @@ class MemberResourceTest {
   private UserWithSponsorDTO createInactiveMember() {
     UserWithSponsorCreateDTO dto = memberCreateDto(uniqueEmail("mb-inact-hist"), uniqueCode("I"), uniqueDocument());
     return adminService.createUser(dto, null);
+  }
+
+  private UserWithSponsorDTO createAdmin() {
+    UserWithSponsorCreateDTO dto = UserWithSponsorCreateDTO.builder()
+        .user(UserCreateDTO.builder()
+            .email(uniqueEmail("adm-acct"))
+            .name("Admin Conta Membro")
+            .document(uniqueDocument())
+            .code(uniqueCode("A"))
+            .type("ADM")
+            .build())
+        .build();
+    UserWithSponsorDTO created = adminService.createUser(dto, null);
+    adminService.activateUser(created.getId());
+    return adminService.findUserById(created.getId());
+  }
+
+  private UserWithSponsorDTO createActiveSponsoredMember(UserWithSponsorDTO admin) {
+    UserWithSponsorCreateDTO dto = UserWithSponsorCreateDTO.builder()
+        .user(UserCreateDTO.builder()
+            .email(uniqueEmail("mb-spn"))
+            .name("Membro Patrocinado")
+            .document(uniqueDocument())
+            .code(uniqueCode("P"))
+            .type("MEMBER")
+            .build())
+        .member(MemberDataCreateDTO.builder()
+            .fullname("Membro Patrocinado Completo")
+            .whatsapp(uniqueWhatsapp())
+            .type("SPONSORED")
+            .sponsored(SponsoredDataCreateDTO.builder()
+                .startAt(LocalDate.now().minusDays(1))
+                .build())
+            .build())
+        .build();
+    UserWithSponsorDTO created = adminService.createUser(dto, admin.getId());
+    adminService.activateUser(created.getId());
+    return adminService.findUserById(created.getId());
+  }
+
+  private UserWithSponsorDTO createOverdueSubscriberMember() {
+    UserWithSponsorCreateDTO dto = UserWithSponsorCreateDTO.builder()
+        .user(UserCreateDTO.builder()
+            .email(uniqueEmail("mb-ovd"))
+            .name("Membro Atrasado")
+            .document(uniqueDocument())
+            .code(uniqueCode("O"))
+            .type("MEMBER")
+            .build())
+        .member(MemberDataCreateDTO.builder()
+            .fullname("Membro Atrasado Completo")
+            .whatsapp(uniqueWhatsapp())
+            .type("SUBSCRIBER")
+            .subscriber(SubscriberDataCreateDTO.builder()
+                .monthlyFeeAmount(new BigDecimal("75.00"))
+                .billingDay(10)
+                .nextDueDate(LocalDate.now().minusDays(15))
+                .build())
+            .build())
+        .build();
+    UserWithSponsorDTO created = adminService.createUser(dto, null);
+    adminService.activateUser(created.getId());
+    return adminService.findUserById(created.getId());
   }
 
   private static UserWithSponsorCreateDTO memberCreateDto(String email, String code, String document) {
@@ -169,6 +237,8 @@ class MemberResourceTest {
       given().when().get(CHECKINS_PATH).then().statusCode(401);
       given().when().get(SPONSORS_PATH).then().statusCode(401);
       given().when().get(BENEFITS_PATH).then().statusCode(401);
+      given().when().get(ACCOUNT_PATH).then().statusCode(401);
+      given().when().get(ACCOUNT_PAYMENTS_PATH).then().statusCode(401);
     }
 
     @Test
@@ -178,6 +248,8 @@ class MemberResourceTest {
       given().when().get(CHECKINS_PATH).then().statusCode(403);
       given().when().get(SPONSORS_PATH).then().statusCode(403);
       given().when().get(BENEFITS_PATH).then().statusCode(403);
+      given().when().get(ACCOUNT_PATH).then().statusCode(403);
+      given().when().get(ACCOUNT_PAYMENTS_PATH).then().statusCode(403);
     }
 
     @Test
@@ -187,6 +259,8 @@ class MemberResourceTest {
       given().when().get(CHECKINS_PATH).then().statusCode(403);
       given().when().get(SPONSORS_PATH).then().statusCode(403);
       given().when().get(BENEFITS_PATH).then().statusCode(403);
+      given().when().get(ACCOUNT_PATH).then().statusCode(403);
+      given().when().get(ACCOUNT_PAYMENTS_PATH).then().statusCode(403);
     }
   }
 
@@ -543,6 +617,85 @@ class MemberResourceTest {
           .body("pageSize", is(2))
           .body("currentPage", is(1))
           .body("data", hasSize(2));
+    }
+  }
+
+  @Nested
+  @DisplayName("Situação da conta do membro")
+  class MemberAccount {
+
+    @Test
+    @DisplayName("assinante autenticado consulta status da mensalidade")
+    void subscriber_returnsAccountStatus() {
+      UserWithSponsorDTO member = createActiveMember();
+      String memberToken = tokenForMember(member);
+
+      given()
+          .header("Authorization", "Bearer " + memberToken)
+          .when()
+          .get(ACCOUNT_PATH)
+          .then()
+          .statusCode(200)
+          .body("data.status", is("ACTIVE"))
+          .body("data.monthlyFeeAmount", is(50.0f))
+          .body("data.billingDay", is(10))
+          .body("data.nextDueDate", not(nullValue()));
+    }
+
+    @Test
+    @DisplayName("patrocinado recebe 400 ao consultar status da conta")
+    void sponsored_returns400() {
+      UserWithSponsorDTO admin = createAdmin();
+      UserWithSponsorDTO member = createActiveSponsoredMember(admin);
+      String memberToken = tokenForMember(member);
+
+      given()
+          .header("Authorization", "Bearer " + memberToken)
+          .when()
+          .get(ACCOUNT_PATH)
+          .then()
+          .statusCode(400);
+    }
+
+    @Test
+    @DisplayName("histórico lista pagamentos registrados com data de conferência e admin")
+    void subscriber_listsPaymentHistoryWithAdmin() {
+      UserWithSponsorDTO admin = createAdmin();
+      UserWithSponsorDTO member = createOverdueSubscriberMember();
+      String memberToken = tokenForMember(member);
+
+      adminService.markSubscriberPaidByUserId(
+          member.getId(),
+          SubscriberPaymentMarkPaidDTO.builder().note("Pagamento conferido").build(),
+          admin.getId());
+
+      given()
+          .header("Authorization", "Bearer " + memberToken)
+          .when()
+          .get(ACCOUNT_PAYMENTS_PATH + "?page=1&size=10")
+          .then()
+          .statusCode(200)
+          .body("totalElements", is(1))
+          .body("data", hasSize(1))
+          .body("data[0].conferenceAt", not(nullValue()))
+          .body("data[0].adminName", is("Admin Conta Membro"))
+          .body("data[0].amount", is(75.0f))
+          .body("data[0].note", is("Pagamento conferido"));
+    }
+
+    @Test
+    @DisplayName("patrocinado recebe 400 ao consultar histórico de pagamentos")
+    void sponsoredPaymentHistory_returns400() {
+      UserWithSponsorDTO admin = createAdmin();
+      UserWithSponsorDTO member = createActiveSponsoredMember(admin);
+      String memberToken = tokenForMember(member);
+
+      given()
+          .header("Authorization", "Bearer " + memberToken)
+          .when()
+          .get(ACCOUNT_PAYMENTS_PATH + "?page=1&size=10")
+          .then()
+          .statusCode(400);
     }
   }
 }

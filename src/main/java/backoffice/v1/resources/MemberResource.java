@@ -11,10 +11,13 @@ import backoffice.common.exceptions.customs.ForbiddenException;
 import backoffice.common.requests.ResponseModel;
 import backoffice.v1.dtos.member.ListMemberBenefitsQueryDTO;
 import backoffice.v1.dtos.member.ListMemberCheckinsQueryDTO;
+import backoffice.v1.dtos.member.ListMemberPaymentsQueryDTO;
 import backoffice.v1.dtos.member.MemberBenefitDTO;
+import backoffice.v1.dtos.member.MemberAccountStatusDTO;
 import backoffice.v1.dtos.member.MemberCardDTO;
 import backoffice.v1.dtos.member.MemberCheckinHistoryDTO;
 import backoffice.v1.dtos.member.MemberCheckinSponsorOptionDTO;
+import backoffice.v1.dtos.member.MemberPaymentHistoryDTO;
 import backoffice.v1.openapi.api.MemberApi;
 import backoffice.v1.services.MemberService;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -35,6 +38,22 @@ public class MemberResource implements MemberApi {
   @Override
   public Response getMyCard() {
     MemberCardDTO result = service.findCardByUserId(currentUserId());
+    var response = ResponseModel.success(Status.OK.getStatusCode(), result);
+    return Response.ok(response).build();
+  }
+
+  @Override
+  public Response getMyAccount() {
+    MemberAccountStatusDTO result = service.findAccountStatusByUserId(currentUserId());
+    var response = ResponseModel.success(Status.OK.getStatusCode(), result);
+    return Response.ok(response).build();
+  }
+
+  @Override
+  public Response listMyPayments(@Valid @BeanParam ListMemberPaymentsQueryDTO query) {
+    Pageable<MemberPaymentHistoryDTO> result = service.listPaymentHistoryByUserId(
+        currentUserId(),
+        query.toPageDTO());
     var response = ResponseModel.success(Status.OK.getStatusCode(), result);
     return Response.ok(response).build();
   }

@@ -18,10 +18,12 @@ import backoffice.common.utils.MemberBillingUtil;
 import backoffice.v1.dtos.billing.SubscriberMemberConfigSnapshot;
 import backoffice.v1.dtos.common.PageDTO;
 import backoffice.v1.dtos.member.MemberBenefitDTO;
+import backoffice.v1.dtos.member.MemberAccountStatusDTO;
 import backoffice.v1.dtos.member.MemberCardDTO;
 import backoffice.v1.dtos.member.MemberCheckinHistoryDTO;
 import backoffice.v1.dtos.member.MemberCheckinSponsorOptionDTO;
 import backoffice.v1.dtos.member.MemberDTO;
+import backoffice.v1.dtos.member.MemberPaymentHistoryDTO;
 import backoffice.v1.dtos.member.MemberDataCreateDTO;
 import backoffice.v1.dtos.member.MemberDataUpdateDTO;
 import backoffice.v1.dtos.member.SponsoredDataCreateDTO;
@@ -301,6 +303,16 @@ public class MemberService {
   public Pageable<MemberBenefitDTO> listBenefitsByUserId(Long userId, Long sponsorId, PageDTO pageDTO) {
     requireActiveMember(userId);
     return benefitService.listActiveForMemberCatalog(sponsorId, pageDTO);
+  }
+
+  public MemberAccountStatusDTO findAccountStatusByUserId(Long userId) {
+    requireActiveMember(userId);
+    return memberBillingService.findAccountStatusByUserId(userId);
+  }
+
+  public Pageable<MemberPaymentHistoryDTO> listPaymentHistoryByUserId(Long userId, PageDTO pageDTO) {
+    requireActiveMember(userId);
+    return memberBillingService.listPaymentHistoryByUserId(userId, pageDTO);
   }
 
   private Member requireActiveMember(Long userId) {
